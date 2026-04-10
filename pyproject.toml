@@ -35,8 +35,6 @@ src = ["src", "tests"]
 select = ["ALL"]
 ignore = [
     "D",
-    "ANN101",
-    "ANN102",
     "COM812",
     "ISC001",
 ]
@@ -46,7 +44,6 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["fellow_aiden_api"]
