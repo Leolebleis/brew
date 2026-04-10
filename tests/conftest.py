@@ -6,6 +6,12 @@ from httpx import ASGITransport, AsyncClient
 from fellow_aiden_api.main import app
 
 
+@pytest.fixture(autouse=True)
+def _set_test_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FELLOW_FELLOW_EMAIL", "test@example.com")
+    monkeypatch.setenv("FELLOW_FELLOW_PASSWORD", "test-password")
+
+
 @pytest.fixture
 async def client() -> AsyncGenerator[AsyncClient]:
     transport = ASGITransport(app=app)
