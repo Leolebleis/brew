@@ -8,7 +8,7 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.34",
     "pydantic-settings>=2.7",
-    "fellow-aiden>=0.2",
+    "fellow-aiden @ git+https://github.com/9b/fellow-aiden.git",
     "httpx>=0.28",
 ]
 
@@ -55,6 +55,9 @@ fail_under = 80
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fellow_aiden_api"]

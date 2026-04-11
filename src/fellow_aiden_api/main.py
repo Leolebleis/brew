@@ -29,7 +29,8 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
 
-    fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, settings.fellow_password.get_secret_value())
+    password = settings.fellow_password.get_secret_value()
+    fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, password)
 
     device_client = FellowDeviceClient(fellow=fellow)
     profile_client = FellowProfileClient(fellow=fellow)

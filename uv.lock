@@ -228,14 +228,10 @@ wheels = [
 [[package]]
 name = "fellow-aiden"
 version = "0.2.2"
-source = { registry = "https://pypi.org/simple" }
+source = { git = "https://github.com/9b/fellow-aiden.git#395792aaef34bbdf6a2390e25df734313a68e138" }
 dependencies = [
     { name = "pydantic" },
     { name = "requests" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/4c/a9/f90adfad004c1064cd1fe97ece6bc46843fa4b149f70f6e69948d23d813a/fellow_aiden-0.2.2.tar.gz", hash = "sha256:34b97d8650f118db001a9179765f9cd5bc8f6d0247f5163bfcf5b8bab01c9d83", size = 27025, upload-time = "2025-03-22T21:00:42.955Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/4f/82/221d88541e98d224bde49513924097d94da46f1805ac175b451ab3f6c262/fellow_aiden-0.2.2-py3-none-any.whl", hash = "sha256:8321d80b65858d90fbd490bfcd261ad9989b2d14995b22b79f6ea773ae5c057c", size = 20245, upload-time = "2025-03-22T21:00:41.621Z" },
 ]
 
 [[package]]
@@ -266,7 +262,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "fellow-aiden", specifier = ">=0.2" },
+    { name = "fellow-aiden", git = "https://github.com/9b/fellow-aiden.git" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },

@@ -5,20 +5,20 @@ from dataclasses import dataclass
 class Profile:
     id: str
     title: str
-    profile_type: int
-    ratio: float
-    bloom_enabled: bool
-    bloom_ratio: float
-    bloom_duration: int
-    bloom_temperature: float
-    ss_pulses_enabled: bool
-    ss_pulses_number: int
-    ss_pulses_interval: int
-    ss_pulse_temperatures: list[float]
-    batch_pulses_enabled: bool
-    batch_pulses_number: int
-    batch_pulses_interval: int
-    batch_pulse_temperatures: list[float]
+    profile_type: int | None = None
+    ratio: float | None = None
+    bloom_enabled: bool | None = None
+    bloom_ratio: float | None = None
+    bloom_duration: int | None = None
+    bloom_temperature: float | None = None
+    ss_pulses_enabled: bool | None = None
+    ss_pulses_number: int | None = None
+    ss_pulses_interval: int | None = None
+    ss_pulse_temperatures: list[float] | None = None
+    batch_pulses_enabled: bool | None = None
+    batch_pulses_number: int | None = None
+    batch_pulses_interval: int | None = None
+    batch_pulse_temperatures: list[float] | None = None
 
 
 @dataclass(frozen=True)
