@@ -7,8 +7,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fellow_aiden import FellowAiden
 
-from fellow_aiden_api.config import Settings
-from fellow_aiden_api.dependencies import require_api_key
+from fellow_aiden_api.dependencies import get_settings, require_api_key
 from fellow_aiden_api.device.client.fellow_client import FellowDeviceClient
 from fellow_aiden_api.device.dependencies import get_device_service
 from fellow_aiden_api.device.router import router as device_router
@@ -26,15 +25,11 @@ from fellow_aiden_api.schedules.service import ScheduleService
 logger = logging.getLogger(__name__)
 
 
-def _create_fellow(email: str, password: str) -> FellowAiden:
-    return FellowAiden(email, password)
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    settings = Settings()
+    settings = get_settings()
 
-    fellow = await asyncio.to_thread(_create_fellow, settings.fellow_email, settings.fellow_password.get_secret_value())
+    fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, settings.fellow_password.get_secret_value())
 
     device_client = FellowDeviceClient(fellow=fellow)
     profile_client = FellowProfileClient(fellow=fellow)

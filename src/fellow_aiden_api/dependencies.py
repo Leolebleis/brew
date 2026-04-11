@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Security, status
@@ -8,6 +9,7 @@ from fellow_aiden_api.config import Settings
 api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
 

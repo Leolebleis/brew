@@ -33,6 +33,8 @@ async def list_profiles(
             return [ProfileMapper.to_api_response(p) for p in result.profiles]
         case ProfileListOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.get("/{profile_id}")
@@ -48,6 +50,8 @@ async def get_profile(
             raise HTTPException(status_code=404, detail=result.error)
         case ProfileGetOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.post("", status_code=201)
@@ -65,6 +69,8 @@ async def create_profile(
             return ProfileMapper.to_api_response(result.profile)
         case ProfileCreateOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.patch("/{profile_id}")
@@ -80,6 +86,8 @@ async def update_profile(
             return {"status": "ok"}
         case ProfileUpdateOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.delete("/{profile_id}", status_code=204)
@@ -93,6 +101,8 @@ async def delete_profile(
             return Response(status_code=204)
         case ProfileDeleteOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.post("/{profile_id}/link", status_code=201)
@@ -106,3 +116,5 @@ async def generate_link(
             return ProfileMapper.to_link_response(result.link)
         case ProfileLinkOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")

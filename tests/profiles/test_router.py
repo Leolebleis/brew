@@ -5,7 +5,7 @@ from httpx import AsyncClient
 
 from fellow_aiden_api.main import app
 from fellow_aiden_api.profiles.dependencies import get_profile_service
-from fellow_aiden_api.profiles.model.profile import Profile, ProfileLink
+from fellow_aiden_api.profiles.model.profile import ProfileLink
 from fellow_aiden_api.profiles.service import (
     ProfileCreateOutcome,
     ProfileCreateResult,
@@ -18,25 +18,7 @@ from fellow_aiden_api.profiles.service import (
     ProfileListOutcome,
     ProfileListResult,
 )
-
-SAMPLE_PROFILE = Profile(
-    id="p0",
-    title="Morning Brew",
-    profile_type=1,
-    ratio=16.0,
-    bloom_enabled=True,
-    bloom_ratio=2.0,
-    bloom_duration=30,
-    bloom_temperature=93.0,
-    ss_pulses_enabled=False,
-    ss_pulses_number=1,
-    ss_pulses_interval=10,
-    ss_pulse_temperatures=[93.0],
-    batch_pulses_enabled=False,
-    batch_pulses_number=1,
-    batch_pulses_interval=10,
-    batch_pulse_temperatures=[93.0],
-)
+from tests.profiles.conftest import SAMPLE_PROFILE
 
 
 @pytest.fixture

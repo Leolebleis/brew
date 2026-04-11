@@ -27,6 +27,8 @@ async def list_schedules(
             return [ScheduleMapper.to_api_response(s) for s in result.schedules]
         case ScheduleListOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.post("", status_code=201)
@@ -41,6 +43,8 @@ async def create_schedule(
             return ScheduleMapper.to_api_response(result.schedule)
         case ScheduleCreateOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.patch("/{schedule_id}")
@@ -56,6 +60,8 @@ async def update_schedule(
             return {"status": "ok"}
         case ScheduleUpdateOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.delete("/{schedule_id}", status_code=204)
@@ -69,3 +75,5 @@ async def delete_schedule(
             return Response(status_code=204)
         case ScheduleDeleteOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")

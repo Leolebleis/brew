@@ -21,6 +21,8 @@ async def get_device(
             return DeviceMapper.to_api_response(result.device)
         case DeviceGetOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
 
 
 @router.patch("/settings")
@@ -35,3 +37,5 @@ async def update_device_settings(
             return {"status": "ok"}
         case DeviceSettingsOutcome.FELLOW_UNAVAILABLE:
             raise HTTPException(status_code=503, detail=result.error)
+        case _:
+            raise HTTPException(status_code=500, detail="Unexpected outcome")
