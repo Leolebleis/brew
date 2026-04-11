@@ -13,7 +13,7 @@ HTTP API wrapping the Fellow Aiden cloud API, self-hosted on Raspberry Pi.
 
 - Fellow cloud API only -- no local/LAN API exists
 - Can manage profiles, schedules, and device settings; **cannot trigger a brew remotely**
-- JWT tokens expire quickly (~15min) -- must handle refresh
+- JWT tokens expire quickly (~15min) -- `fellow-aiden` library handles re-auth automatically on 401
 - Aiden connects via 2.4 GHz WiFi only
 
 ## Project Structure
@@ -54,7 +54,7 @@ Run the app and see `GET /coffee/api/docs` (Swagger UI) or `GET /coffee/api/open
 ## Gotchas
 
 - `ty` reports false positive `missing-argument` on `Settings()` -- suppressed with `# ty: ignore[missing-argument]`
-- Token refresh not yet implemented -- app will return 503s after ~15min without restart
+- `token_refresh_interval_seconds` config field exists but is unused -- `fellow-aiden` library handles re-auth on 401 transparently
 
 ## Testing
 
