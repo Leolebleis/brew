@@ -19,3 +19,38 @@ HTTP API that wraps the Fellow Aiden cloud API, self-hosted on a Raspberry Pi. S
 - Can manage profiles, schedules, and device settings; **cannot trigger a brew remotely**
 - JWT tokens expire quickly (~15min) -- must handle refresh
 - Aiden connects via 2.4 GHz WiFi only
+
+## Project Structure
+
+Three-layer clean architecture (API -> Domain <- Infrastructure) with domain-first folders:
+- `src/fellow_aiden_api/{device,profiles,schedules}/` -- each has router, service, facade, client, mapper, models
+- `src/fellow_aiden_api/main.py` -- FastAPI app with lifespan wiring
+- `src/fellow_aiden_api/config.py` -- Pydantic Settings (env prefix: `FELLOW_`)
+- `src/fellow_aiden_api/dependencies.py` -- API key guard, cached Settings
+
+## Commands
+
+- `uv run pytest -v` -- run tests (52 tests, asyncio_mode=auto)
+- `uv run ruff check src/ tests/` -- lint
+- `uv run ruff format src/ tests/` -- format
+- `uv run ty check src/` -- type check
+- `docker compose up -d --build` -- build and deploy
+
+## Dependencies
+
+- `fellow-aiden` installed from GitHub master (not PyPI) -- PyPI 0.2.2 has a known bug where `__device()` crashes on missing profiles/schedules keys (fixed in PR #20, never published)
+- fellow-aiden library is synchronous -- wrapped with `asyncio.to_thread()` in infrastructure clients
+- Fellow API returns `None` for many profile fields -- domain entities and API responses use nullable types
+
+## Deployment
+
+- Docker container `fellow-aiden-api` on `pi-net` network
+- nginx location: `/coffee/api/` -> `http://fellow-aiden-api:8000/coffee/api/`
+- nginx location config at `../nginx/locations.d/coffee.conf` (NOT tracked in git)
+- Requires `.env` with `FELLOW_FELLOW_EMAIL`, `FELLOW_FELLOW_PASSWORD`, optional `FELLOW_API_KEY`
+- Dockerfile needs `git` in builder stage (for git+ dependency) and `--no-editable` flag
+
+## Gotchas
+
+- `ty` reports false positive `missing-argument` on `Settings()` -- suppressed with `# ty: ignore[missing-argument]`
+- Token refresh not yet implemented -- app will return 503s after ~15min without restart
