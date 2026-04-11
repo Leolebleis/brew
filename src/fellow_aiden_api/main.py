@@ -1,8 +1,8 @@
+import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import anyio
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fellow_aiden import FellowAiden
@@ -34,9 +34,7 @@ def _create_fellow(email: str, password: str) -> FellowAiden:
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = Settings()
 
-    fellow = await anyio.to_thread.run_sync(
-        lambda: _create_fellow(settings.fellow_email, settings.fellow_password.get_secret_value())
-    )
+    fellow = await asyncio.to_thread(_create_fellow, settings.fellow_email, settings.fellow_password.get_secret_value())
 
     device_client = FellowDeviceClient(fellow=fellow)
     profile_client = FellowProfileClient(fellow=fellow)

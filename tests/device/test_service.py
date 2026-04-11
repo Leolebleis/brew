@@ -1,7 +1,5 @@
 from unittest.mock import AsyncMock
 
-import pytest
-
 from fellow_aiden_api.device.model.device import Device, DeviceSettings
 from fellow_aiden_api.device.service import (
     DeviceGetOutcome,
@@ -10,7 +8,6 @@ from fellow_aiden_api.device.service import (
 )
 
 
-@pytest.mark.anyio
 async def test_get_device_success() -> None:
     mock_facade = AsyncMock()
     expected_device = Device(brewer_id="b1", display_name="Aiden", firmware_version="3.0")
@@ -23,7 +20,6 @@ async def test_get_device_success() -> None:
     assert result.device == expected_device
 
 
-@pytest.mark.anyio
 async def test_get_device_upstream_unavailable() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_device.side_effect = Exception("connection failed")
@@ -36,7 +32,6 @@ async def test_get_device_upstream_unavailable() -> None:
     assert result.error is not None
 
 
-@pytest.mark.anyio
 async def test_adjust_setting_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.adjust_setting.return_value = None

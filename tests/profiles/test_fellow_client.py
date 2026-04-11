@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from fellow_aiden_api.profiles.client.fellow_client import FellowProfileClient
 from fellow_aiden_api.profiles.client.fellow_client_mapper import FellowProfileMapper
 from fellow_aiden_api.profiles.model.profile import Profile, ProfileCreate, ProfileLink
@@ -77,7 +75,6 @@ def test_mapper_converts_profile_create_to_fellow_dict() -> None:
     assert result["bloomEnabled"] is True
 
 
-@pytest.mark.anyio
 async def test_get_profiles_returns_mapped_entities() -> None:
     mock_fellow = MagicMock()
     mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
@@ -89,7 +86,6 @@ async def test_get_profiles_returns_mapped_entities() -> None:
     assert profiles[0] == EXPECTED_PROFILE
 
 
-@pytest.mark.anyio
 async def test_delete_profile_calls_fellow() -> None:
     mock_fellow = MagicMock()
     mock_fellow.delete_profile_by_id.return_value = True
@@ -100,7 +96,6 @@ async def test_delete_profile_calls_fellow() -> None:
     mock_fellow.delete_profile_by_id.assert_called_once_with("p0")
 
 
-@pytest.mark.anyio
 async def test_generate_link_returns_profile_link() -> None:
     mock_fellow = MagicMock()
     mock_fellow.generate_share_link.return_value = "https://brew.link/abc123"

@@ -26,7 +26,6 @@ def _override_device_service(mock_device_service: AsyncMock) -> None:
     app.dependency_overrides.pop(get_device_service, None)
 
 
-@pytest.mark.anyio
 async def test_get_device_returns_200(client: AsyncClient, mock_device_service: AsyncMock) -> None:
     mock_device_service.get_device.return_value = DeviceGetResult(
         outcome=DeviceGetOutcome.SUCCESS,
@@ -40,7 +39,6 @@ async def test_get_device_returns_200(client: AsyncClient, mock_device_service: 
     assert data["firmware_version"] == "3.2.1"
 
 
-@pytest.mark.anyio
 async def test_get_device_returns_503_when_unavailable(client: AsyncClient, mock_device_service: AsyncMock) -> None:
     mock_device_service.get_device.return_value = DeviceGetResult(
         outcome=DeviceGetOutcome.FELLOW_UNAVAILABLE,
@@ -50,7 +48,6 @@ async def test_get_device_returns_503_when_unavailable(client: AsyncClient, mock
     assert response.status_code == 503
 
 
-@pytest.mark.anyio
 async def test_patch_settings_returns_200(client: AsyncClient, mock_device_service: AsyncMock) -> None:
     mock_device_service.adjust_setting.return_value = DeviceSettingsResult(
         outcome=DeviceSettingsOutcome.SUCCESS,
@@ -59,7 +56,6 @@ async def test_patch_settings_returns_200(client: AsyncClient, mock_device_servi
     assert response.status_code == 200
 
 
-@pytest.mark.anyio
 async def test_patch_settings_returns_503_when_unavailable(client: AsyncClient, mock_device_service: AsyncMock) -> None:
     mock_device_service.adjust_setting.return_value = DeviceSettingsResult(
         outcome=DeviceSettingsOutcome.FELLOW_UNAVAILABLE,

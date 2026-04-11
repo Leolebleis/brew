@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from fellow_aiden_api.device.client.fellow_client import FellowDeviceClient
 from fellow_aiden_api.device.client.fellow_client_mapper import FellowDeviceMapper
 from fellow_aiden_api.device.model.device import Device, DeviceSettings
@@ -22,7 +20,6 @@ def test_mapper_converts_fellow_dict_to_device() -> None:
     )
 
 
-@pytest.mark.anyio
 async def test_get_device_returns_mapped_entity() -> None:
     mock_fellow = MagicMock()
     mock_fellow.get_device_config.return_value = {
@@ -42,7 +39,6 @@ async def test_get_device_returns_mapped_entity() -> None:
     mock_fellow.get_device_config.assert_called_once_with(remote=True)
 
 
-@pytest.mark.anyio
 async def test_adjust_setting_calls_fellow() -> None:
     mock_fellow = MagicMock()
     mock_fellow.adjust_setting.return_value = b""

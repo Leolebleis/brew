@@ -1,7 +1,5 @@
 from unittest.mock import AsyncMock
 
-import pytest
-
 from fellow_aiden_api.profiles.model.profile import Profile, ProfileCreate, ProfileLink
 from fellow_aiden_api.profiles.service import (
     ProfileCreateOutcome,
@@ -32,7 +30,6 @@ SAMPLE_PROFILE = Profile(
 )
 
 
-@pytest.mark.anyio
 async def test_list_profiles_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_profiles.return_value = [SAMPLE_PROFILE]
@@ -44,7 +41,6 @@ async def test_list_profiles_success() -> None:
     assert result.profiles == [SAMPLE_PROFILE]
 
 
-@pytest.mark.anyio
 async def test_list_profiles_unavailable() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_profiles.side_effect = Exception("fail")
@@ -55,7 +51,6 @@ async def test_list_profiles_unavailable() -> None:
     assert result.outcome == ProfileListOutcome.FELLOW_UNAVAILABLE
 
 
-@pytest.mark.anyio
 async def test_get_profile_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_profile.return_value = SAMPLE_PROFILE
@@ -67,7 +62,6 @@ async def test_get_profile_success() -> None:
     assert result.profile == SAMPLE_PROFILE
 
 
-@pytest.mark.anyio
 async def test_get_profile_not_found() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_profile.return_value = None
@@ -78,7 +72,6 @@ async def test_get_profile_not_found() -> None:
     assert result.outcome == ProfileGetOutcome.NOT_FOUND
 
 
-@pytest.mark.anyio
 async def test_create_profile_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.create_profile.return_value = SAMPLE_PROFILE
@@ -107,7 +100,6 @@ async def test_create_profile_success() -> None:
     assert result.profile == SAMPLE_PROFILE
 
 
-@pytest.mark.anyio
 async def test_create_profile_from_link_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.create_profile_from_link.return_value = SAMPLE_PROFILE
@@ -119,7 +111,6 @@ async def test_create_profile_from_link_success() -> None:
     assert result.profile == SAMPLE_PROFILE
 
 
-@pytest.mark.anyio
 async def test_delete_profile_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.delete_profile.return_value = None
@@ -130,7 +121,6 @@ async def test_delete_profile_success() -> None:
     assert result.outcome == ProfileDeleteOutcome.SUCCESS
 
 
-@pytest.mark.anyio
 async def test_generate_link_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.generate_link.return_value = ProfileLink(url="https://brew.link/abc")

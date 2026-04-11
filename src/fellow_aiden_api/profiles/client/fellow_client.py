@@ -1,7 +1,6 @@
-from functools import partial
+import asyncio
 from typing import Any
 
-import anyio
 from fellow_aiden import FellowAiden
 
 from fellow_aiden_api.profiles.client.fellow_client_mapper import FellowProfileMapper
@@ -14,7 +13,7 @@ class FellowProfileClient:
         self._mapper = FellowProfileMapper()
 
     async def get_profiles(self) -> list[Profile]:
-        data: list[dict[str, Any]] = await anyio.to_thread.run_sync(self._fellow.get_profiles)
+        data: list[dict[str, Any]] = await asyncio.to_thread(self._fellow.get_profiles)
         return [self._mapper.to_entity(p) for p in data]
 
     async def get_profile(self, profile_id: str) -> Profile | None:
@@ -23,22 +22,20 @@ class FellowProfileClient:
 
     async def create_profile(self, profile: ProfileCreate) -> Profile:
         fellow_data = self._mapper.from_create(profile)
-        result: dict[str, Any] = await anyio.to_thread.run_sync(partial(self._fellow.create_profile, fellow_data))
+        result: dict[str, Any] = await asyncio.to_thread(self._fellow.create_profile, fellow_data)
         return self._mapper.to_entity(result)
 
     async def create_profile_from_link(self, brew_link: str) -> Profile:
-        result: dict[str, Any] = await anyio.to_thread.run_sync(
-            partial(self._fellow.create_profile_from_link, brew_link)
-        )
+        result: dict[str, Any] = await asyncio.to_thread(self._fellow.create_profile_from_link, brew_link)
         return self._mapper.to_entity(result)
 
     async def update_profile(self, profile_id: str, profile: ProfileUpdate) -> None:
         fellow_data = self._mapper.from_update(profile)
-        await anyio.to_thread.run_sync(partial(self._fellow.update_profile, profile_id, fellow_data))
+        await asyncio.to_thread(self._fellow.update_profile, profile_id, fellow_data)
 
     async def delete_profile(self, profile_id: str) -> None:
-        await anyio.to_thread.run_sync(partial(self._fellow.delete_profile_by_id, profile_id))
+        await asyncio.to_thread(self._fellow.delete_profile_by_id, profile_id)
 
     async def generate_link(self, profile_id: str) -> ProfileLink:
-        url: str = await anyio.to_thread.run_sync(partial(self._fellow.generate_share_link, profile_id))
+        url: str = await asyncio.to_thread(self._fellow.generate_share_link, profile_id)
         return ProfileLink(url=url)

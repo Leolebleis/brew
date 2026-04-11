@@ -1,7 +1,5 @@
 from unittest.mock import MagicMock
 
-import pytest
-
 from fellow_aiden_api.schedules.client.fellow_client import FellowScheduleClient
 from fellow_aiden_api.schedules.client.fellow_client_mapper import FellowScheduleMapper
 from fellow_aiden_api.schedules.model.schedule import Schedule, ScheduleCreate
@@ -44,7 +42,6 @@ def test_mapper_converts_schedule_create_to_fellow_dict() -> None:
     assert result["profileId"] == "p0"
 
 
-@pytest.mark.anyio
 async def test_get_schedules_returns_mapped_entities() -> None:
     mock_fellow = MagicMock()
     mock_fellow.get_schedules.return_value = [SAMPLE_FELLOW_SCHEDULE]
@@ -56,7 +53,6 @@ async def test_get_schedules_returns_mapped_entities() -> None:
     assert schedules[0] == EXPECTED_SCHEDULE
 
 
-@pytest.mark.anyio
 async def test_delete_schedule_calls_fellow() -> None:
     mock_fellow = MagicMock()
     mock_fellow.delete_schedule_by_id.return_value = True

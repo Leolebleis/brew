@@ -1,7 +1,5 @@
 from unittest.mock import AsyncMock
 
-import pytest
-
 from fellow_aiden_api.schedules.model.schedule import Schedule, ScheduleCreate, ScheduleUpdate
 from fellow_aiden_api.schedules.service import (
     ScheduleCreateOutcome,
@@ -21,7 +19,6 @@ SAMPLE_SCHEDULE = Schedule(
 )
 
 
-@pytest.mark.anyio
 async def test_list_schedules_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_schedules.return_value = [SAMPLE_SCHEDULE]
@@ -33,7 +30,6 @@ async def test_list_schedules_success() -> None:
     assert result.schedules == [SAMPLE_SCHEDULE]
 
 
-@pytest.mark.anyio
 async def test_list_schedules_unavailable() -> None:
     mock_facade = AsyncMock()
     mock_facade.get_schedules.side_effect = Exception("fail")
@@ -44,7 +40,6 @@ async def test_list_schedules_unavailable() -> None:
     assert result.outcome == ScheduleListOutcome.FELLOW_UNAVAILABLE
 
 
-@pytest.mark.anyio
 async def test_create_schedule_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.create_schedule.return_value = SAMPLE_SCHEDULE
@@ -63,7 +58,6 @@ async def test_create_schedule_success() -> None:
     assert result.schedule == SAMPLE_SCHEDULE
 
 
-@pytest.mark.anyio
 async def test_update_schedule_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.update_schedule.return_value = None
@@ -75,7 +69,6 @@ async def test_update_schedule_success() -> None:
     assert result.outcome == ScheduleUpdateOutcome.SUCCESS
 
 
-@pytest.mark.anyio
 async def test_delete_schedule_success() -> None:
     mock_facade = AsyncMock()
     mock_facade.delete_schedule.return_value = None

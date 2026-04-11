@@ -39,7 +39,6 @@ def _override_schedule_service(mock_schedule_service: AsyncMock) -> None:
     app.dependency_overrides.pop(get_schedule_service, None)
 
 
-@pytest.mark.anyio
 async def test_list_schedules_returns_200(client: AsyncClient, mock_schedule_service: AsyncMock) -> None:
     mock_schedule_service.list_schedules.return_value = ScheduleListResult(
         outcome=ScheduleListOutcome.SUCCESS,
@@ -53,7 +52,6 @@ async def test_list_schedules_returns_200(client: AsyncClient, mock_schedule_ser
     assert data[0]["enabled"] is True
 
 
-@pytest.mark.anyio
 async def test_create_schedule_returns_201(client: AsyncClient, mock_schedule_service: AsyncMock) -> None:
     mock_schedule_service.create_schedule.return_value = ScheduleCreateResult(
         outcome=ScheduleCreateOutcome.SUCCESS,
@@ -73,7 +71,6 @@ async def test_create_schedule_returns_201(client: AsyncClient, mock_schedule_se
     assert response.json()["id"] == "s0"
 
 
-@pytest.mark.anyio
 async def test_update_schedule_returns_200(client: AsyncClient, mock_schedule_service: AsyncMock) -> None:
     mock_schedule_service.update_schedule.return_value = ScheduleUpdateResult(
         outcome=ScheduleUpdateOutcome.SUCCESS,
@@ -82,7 +79,6 @@ async def test_update_schedule_returns_200(client: AsyncClient, mock_schedule_se
     assert response.status_code == 200
 
 
-@pytest.mark.anyio
 async def test_delete_schedule_returns_204(client: AsyncClient, mock_schedule_service: AsyncMock) -> None:
     mock_schedule_service.delete_schedule.return_value = ScheduleDeleteResult(
         outcome=ScheduleDeleteOutcome.SUCCESS,

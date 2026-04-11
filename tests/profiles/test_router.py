@@ -51,7 +51,6 @@ def _override_profile_service(mock_profile_service: AsyncMock) -> None:
     app.dependency_overrides.pop(get_profile_service, None)
 
 
-@pytest.mark.anyio
 async def test_list_profiles_returns_200(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.list_profiles.return_value = ProfileListResult(
         outcome=ProfileListOutcome.SUCCESS,
@@ -65,7 +64,6 @@ async def test_list_profiles_returns_200(client: AsyncClient, mock_profile_servi
     assert data[0]["title"] == "Morning Brew"
 
 
-@pytest.mark.anyio
 async def test_get_profile_returns_200(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.get_profile.return_value = ProfileGetResult(
         outcome=ProfileGetOutcome.SUCCESS,
@@ -76,7 +74,6 @@ async def test_get_profile_returns_200(client: AsyncClient, mock_profile_service
     assert response.json()["id"] == "p0"
 
 
-@pytest.mark.anyio
 async def test_get_profile_returns_404(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.get_profile.return_value = ProfileGetResult(
         outcome=ProfileGetOutcome.NOT_FOUND,
@@ -86,7 +83,6 @@ async def test_get_profile_returns_404(client: AsyncClient, mock_profile_service
     assert response.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_create_profile_from_fields_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile.return_value = ProfileCreateResult(
         outcome=ProfileCreateOutcome.SUCCESS,
@@ -117,7 +113,6 @@ async def test_create_profile_from_fields_returns_201(client: AsyncClient, mock_
     assert response.json()["id"] == "p0"
 
 
-@pytest.mark.anyio
 async def test_create_profile_from_link_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile_from_link.return_value = ProfileCreateResult(
         outcome=ProfileCreateOutcome.SUCCESS,
@@ -134,7 +129,6 @@ async def test_create_profile_from_link_returns_201(client: AsyncClient, mock_pr
     assert response.json()["id"] == "p0"
 
 
-@pytest.mark.anyio
 async def test_delete_profile_returns_204(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.delete_profile.return_value = ProfileDeleteResult(
         outcome=ProfileDeleteOutcome.SUCCESS,
@@ -143,7 +137,6 @@ async def test_delete_profile_returns_204(client: AsyncClient, mock_profile_serv
     assert response.status_code == 204
 
 
-@pytest.mark.anyio
 async def test_generate_link_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.generate_link.return_value = ProfileLinkResult(
         outcome=ProfileLinkOutcome.SUCCESS,

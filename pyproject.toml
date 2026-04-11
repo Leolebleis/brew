@@ -15,8 +15,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8",
-    "anyio[trio]>=4",
-    "pytest-anyio>=0.0.0",
+    "pytest-asyncio>=0.25",
     "respx>=0.22",
     "pytest-mock>=3",
     "polyfactory>=2",
@@ -44,6 +43,7 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 [tool.coverage.run]
 source = ["fellow_aiden_api"]
