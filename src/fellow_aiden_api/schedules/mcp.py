@@ -17,12 +17,10 @@ from fellow_aiden_api.schedules.service import (
 )
 
 _FELLOW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. "
-    "This is usually transient — suggest the user wait a few minutes and retry."
+    "Fellow cloud API is unreachable. This is usually transient — suggest the user wait a few minutes and retry."
 )
 _BREW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. "
-    "Could not start brew — suggest the user wait a few minutes and retry."
+    "Fellow cloud API is unreachable. Could not start brew — suggest the user wait a few minutes and retry."
 )
 _SECONDS_PER_DAY = 86400
 

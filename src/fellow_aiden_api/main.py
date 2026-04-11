@@ -71,6 +71,8 @@ app.include_router(device_router)
 app.include_router(profiles_router)
 app.include_router(schedules_router)
 
+# os.getenv (not Settings) because mount must happen at module level, before lifespan.
+# Settings requires fellow_email/password which aren't available at import time in tests.
 _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
 
 if _mcp_enabled:

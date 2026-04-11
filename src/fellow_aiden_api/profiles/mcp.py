@@ -17,15 +17,13 @@ from fellow_aiden_api.profiles.service import (
 )
 
 _FELLOW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. "
-    "This is usually transient — suggest the user wait a few minutes and retry."
+    "Fellow cloud API is unreachable. This is usually transient — suggest the user wait a few minutes and retry."
 )
 _PROFILE_NOT_FOUND_MSG = (
-    "No profile found with ID '{profile_id}'. "
-    "Use the coffee://profiles resource to see available profiles."
+    "No profile found with ID '{profile_id}'. Use the coffee://profiles resource to see available profiles."
 )
 _MANUAL_CREATE_REQUIRED_MSG = (
-    "Manual profile creation requires at least: title, profile_type, ratio, and all bloom/pulse fields."
+    "Manual profile creation requires at least: title, profile_type, and ratio. Other fields have sensible defaults."
 )
 
 

@@ -111,12 +111,14 @@ async def test_delete_schedule_success(mcp: FastMCP, mock_service: AsyncMock) ->
     assert "deleted" in result.content[0].text
 
 
-async def test_brew_now_creates_and_deletes_schedule(
-    mcp: FastMCP, mock_service: AsyncMock
-) -> None:
+async def test_brew_now_creates_and_deletes_schedule(mcp: FastMCP, mock_service: AsyncMock) -> None:
     created_schedule = Schedule(
-        id="s-temp", days=[False] * 7, second_from_start_of_day=0,
-        enabled=True, amount_of_water=500, profile_id="p1",
+        id="s-temp",
+        days=[False] * 7,
+        second_from_start_of_day=0,
+        enabled=True,
+        amount_of_water=500,
+        profile_id="p1",
     )
     mock_service.create_schedule.return_value = ScheduleCreateResult(
         outcome=ScheduleCreateOutcome.SUCCESS,
@@ -137,12 +139,14 @@ async def test_brew_now_creates_and_deletes_schedule(
     mock_service.delete_schedule.assert_called_once_with("s-temp")
 
 
-async def test_brew_now_warns_on_cleanup_failure(
-    mcp: FastMCP, mock_service: AsyncMock
-) -> None:
+async def test_brew_now_warns_on_cleanup_failure(mcp: FastMCP, mock_service: AsyncMock) -> None:
     created_schedule = Schedule(
-        id="s-temp", days=[False] * 7, second_from_start_of_day=0,
-        enabled=True, amount_of_water=500, profile_id="p1",
+        id="s-temp",
+        days=[False] * 7,
+        second_from_start_of_day=0,
+        enabled=True,
+        amount_of_water=500,
+        profile_id="p1",
     )
     mock_service.create_schedule.return_value = ScheduleCreateResult(
         outcome=ScheduleCreateOutcome.SUCCESS,
@@ -161,9 +165,7 @@ async def test_brew_now_warns_on_cleanup_failure(
     assert "s-temp" in text  # warns about orphaned schedule
 
 
-async def test_brew_now_fails_when_creation_fails(
-    mcp: FastMCP, mock_service: AsyncMock
-) -> None:
+async def test_brew_now_fails_when_creation_fails(mcp: FastMCP, mock_service: AsyncMock) -> None:
     mock_service.create_schedule.return_value = ScheduleCreateResult(
         outcome=ScheduleCreateOutcome.FELLOW_UNAVAILABLE,
         error="Fellow cloud unavailable",
