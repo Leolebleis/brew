@@ -139,7 +139,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
 
     @mcp.tool(
         description="Permanently delete a brew profile. This cannot be undone.",
-        annotations=ToolAnnotations(destructive_hint=True),
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_profile(profile_id: str) -> str:
         result = await service.delete_profile(profile_id)
@@ -149,7 +149,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
 
     @mcp.tool(
         description="Generate a shareable URL for a brew profile that others can import.",
-        annotations=ToolAnnotations(read_only_hint=True),
+        annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def generate_profile_link(profile_id: str) -> str:
         result = await service.generate_link(profile_id)

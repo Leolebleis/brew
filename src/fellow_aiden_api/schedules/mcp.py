@@ -88,7 +88,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
 
     @mcp.tool(
         description="Permanently delete a schedule. This cannot be undone.",
-        annotations=ToolAnnotations(destructive_hint=True),
+        annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_schedule(schedule_id: str) -> str:
         result = await service.delete_schedule(schedule_id)
