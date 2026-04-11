@@ -1,10 +1,6 @@
-# CLAUDE.md
+# Fellow Aiden API
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
-## Purpose
-
-HTTP API that wraps the Fellow Aiden cloud API, self-hosted on a Raspberry Pi. Surfaces brew profiles, schedules, and device settings over a local network endpoint.
+HTTP API wrapping the Fellow Aiden cloud API, self-hosted on Raspberry Pi.
 
 ## Architecture
 
@@ -30,6 +26,7 @@ Three-layer clean architecture (API -> Domain <- Infrastructure) with domain-fir
 
 ## Commands
 
+- `uv sync` -- install dependencies
 - `uv run pytest -v` -- run tests (52 tests, asyncio_mode=auto)
 - `uv run ruff check src/ tests/` -- lint
 - `uv run ruff format src/ tests/` -- format
@@ -50,7 +47,17 @@ Three-layer clean architecture (API -> Domain <- Infrastructure) with domain-fir
 - Requires `.env` with `FELLOW_FELLOW_EMAIL`, `FELLOW_FELLOW_PASSWORD`, optional `FELLOW_API_KEY`
 - Dockerfile needs `git` in builder stage (for git+ dependency) and `--no-editable` flag
 
+## Endpoints
+
+Run the app and see `GET /coffee/api/docs` (Swagger UI) or `GET /coffee/api/openapi.json`
+
 ## Gotchas
 
 - `ty` reports false positive `missing-argument` on `Settings()` -- suppressed with `# ty: ignore[missing-argument]`
 - Token refresh not yet implemented -- app will return 503s after ~15min without restart
+
+## Testing
+
+- pytest-asyncio with `asyncio_mode = "auto"` -- no markers needed on async tests
+- Router tests use `app.dependency_overrides` to inject mock services
+- `tests/conftest.py` clears `get_settings` LRU cache per test for env var isolation
