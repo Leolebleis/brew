@@ -1,5 +1,7 @@
+import asyncio
 import json
 from dataclasses import asdict
+from datetime import UTC, datetime
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -18,9 +20,14 @@ _FELLOW_UNAVAILABLE_MSG = (
     "Fellow cloud API is unreachable. "
     "This is usually transient — suggest the user wait a few minutes and retry."
 )
+_BREW_UNAVAILABLE_MSG = (
+    "Fellow cloud API is unreachable. "
+    "Could not start brew — suggest the user wait a few minutes and retry."
+)
+_SECONDS_PER_DAY = 86400
 
 
-def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
+def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # noqa: C901
     @mcp.resource(
         "coffee://schedules",
         description="All scheduled brews with days, time, water amount, and linked profile.",
@@ -90,3 +97,47 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         if result.outcome != ScheduleDeleteOutcome.SUCCESS:
             raise ToolError(_FELLOW_UNAVAILABLE_MSG)
         return f"Schedule '{schedule_id}' deleted."
+
+    @mcp.tool(
+        description=(
+            "Brew immediately using a specific profile. "
+            "Creates a temporary schedule, waits for it to trigger, then cleans it up. "
+            "The user should have water and grounds ready."
+        ),
+    )
+    async def brew_now(profile_id: str, water_ml: int) -> str:
+        now = datetime.now(tz=UTC).astimezone()
+        current_day_index = (now.weekday() + 1) % 7  # Python Monday=0 -> Fellow Sunday=0
+        brew_seconds = now.hour * 3600 + now.minute * 60 + now.second + 5
+
+        # Handle midnight rollover
+        days = [False] * 7
+        if brew_seconds >= _SECONDS_PER_DAY:
+            brew_seconds -= _SECONDS_PER_DAY
+            current_day_index = (current_day_index + 1) % 7
+        days[current_day_index] = True
+
+        create = ScheduleCreate(
+            days=days,
+            second_from_start_of_day=brew_seconds,
+            enabled=True,
+            amount_of_water=water_ml,
+            profile_id=profile_id,
+        )
+        result = await service.create_schedule(create)
+        if result.outcome != ScheduleCreateOutcome.SUCCESS or result.schedule is None:
+            raise ToolError(_BREW_UNAVAILABLE_MSG)
+
+        schedule_id = result.schedule.id
+
+        # Wait for the schedule to trigger, then clean up
+        await asyncio.sleep(10)
+
+        delete_result = await service.delete_schedule(schedule_id)
+        if delete_result.outcome != ScheduleDeleteOutcome.SUCCESS:
+            return (
+                f"Brew started successfully, but could not clean up temporary schedule "
+                f"'{schedule_id}'. It should be deleted manually."
+            )
+
+        return "Brew started successfully. The temporary schedule has been cleaned up."
