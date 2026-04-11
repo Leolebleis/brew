@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -44,6 +45,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.dependency_overrides[get_profile_service] = lambda: profile_service
     app.dependency_overrides[get_schedule_service] = lambda: schedule_service
 
+    if _mcp_enabled:
+        from fellow_aiden_api.device.mcp import register_device_mcp  # noqa: PLC0415
+        from fellow_aiden_api.profiles.mcp import register_profile_mcp  # noqa: PLC0415
+        from fellow_aiden_api.schedules.mcp import register_schedule_mcp  # noqa: PLC0415
+
+        register_device_mcp(_mcp_server, device_service)
+        register_profile_mcp(_mcp_server, profile_service)
+        register_schedule_mcp(_mcp_server, schedule_service)
+
     yield
 
     app.dependency_overrides.clear()
@@ -60,6 +70,19 @@ app.include_router(health_router)
 app.include_router(device_router)
 app.include_router(profiles_router)
 app.include_router(schedules_router)
+
+_mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
+
+if _mcp_enabled:
+    from fastmcp import FastMCP as _FastMCP
+
+    from fellow_aiden_api.mcp_auth import McpApiKeyMiddleware
+
+    _mcp_server = _FastMCP("fellow-aiden-coffee")
+    _mcp_app = _mcp_server.http_app(path="/")
+    _mcp_api_key = os.getenv("FELLOW_API_KEY")
+    _mcp_app.add_middleware(McpApiKeyMiddleware, api_key=_mcp_api_key)
+    app.mount("/mcp", _mcp_app)
 
 
 @app.exception_handler(Exception)
