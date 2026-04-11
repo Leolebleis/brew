@@ -1,0 +1,12 @@
+services:
+  fellow-aiden-api:
+    build: .
+    container_name: fellow-aiden-api
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - pi-net
+
+networks:
+  pi-net:
+    external: true
