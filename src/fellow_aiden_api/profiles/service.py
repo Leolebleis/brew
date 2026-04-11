@@ -88,9 +88,7 @@ class ProfileService:
             profiles = await self._facade.get_profiles()
         except Exception:
             logger.exception("Failed to list profiles")
-            return ProfileListResult(
-                outcome=ProfileListOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable"
-            )
+            return ProfileListResult(outcome=ProfileListOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable")
         return ProfileListResult(outcome=ProfileListOutcome.SUCCESS, profiles=profiles)
 
     async def get_profile(self, profile_id: str) -> ProfileGetResult:
@@ -98,13 +96,9 @@ class ProfileService:
             profile = await self._facade.get_profile(profile_id)
         except Exception:
             logger.exception("Failed to get profile")
-            return ProfileGetResult(
-                outcome=ProfileGetOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable"
-            )
+            return ProfileGetResult(outcome=ProfileGetOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable")
         if profile is None:
-            return ProfileGetResult(
-                outcome=ProfileGetOutcome.NOT_FOUND, error=f"Profile {profile_id} not found"
-            )
+            return ProfileGetResult(outcome=ProfileGetOutcome.NOT_FOUND, error=f"Profile {profile_id} not found")
         return ProfileGetResult(outcome=ProfileGetOutcome.SUCCESS, profile=profile)
 
     async def create_profile(self, create: ProfileCreate) -> ProfileCreateResult:
@@ -152,7 +146,5 @@ class ProfileService:
             link = await self._facade.generate_link(profile_id)
         except Exception:
             logger.exception("Failed to generate share link")
-            return ProfileLinkResult(
-                outcome=ProfileLinkOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable"
-            )
+            return ProfileLinkResult(outcome=ProfileLinkOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable")
         return ProfileLinkResult(outcome=ProfileLinkOutcome.SUCCESS, link=link)

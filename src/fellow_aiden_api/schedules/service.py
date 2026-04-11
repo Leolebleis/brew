@@ -63,9 +63,7 @@ class ScheduleService:
             schedules = await self._facade.get_schedules()
         except Exception:
             logger.exception("Failed to list schedules")
-            return ScheduleListResult(
-                outcome=ScheduleListOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable"
-            )
+            return ScheduleListResult(outcome=ScheduleListOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable")
         return ScheduleListResult(outcome=ScheduleListOutcome.SUCCESS, schedules=schedules)
 
     async def create_schedule(self, create: ScheduleCreate) -> ScheduleCreateResult:

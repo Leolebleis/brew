@@ -19,17 +19,13 @@ class FellowScheduleClient:
 
     async def create_schedule(self, schedule: ScheduleCreate) -> Schedule:
         fellow_data = self._mapper.from_create(schedule)
-        result: dict[str, Any] = await anyio.to_thread.run_sync(
-            partial(self._fellow.create_schedule, fellow_data)
-        )
+        result: dict[str, Any] = await anyio.to_thread.run_sync(partial(self._fellow.create_schedule, fellow_data))
         return self._mapper.to_entity(result)
 
     async def update_schedule(self, schedule_id: str, schedule: ScheduleUpdate) -> None:
         fellow_data = self._mapper.from_update(schedule)
         if "enabled" in fellow_data and len(fellow_data) == 1:
-            await anyio.to_thread.run_sync(
-                partial(self._fellow.toggle_schedule, schedule_id, fellow_data["enabled"])
-            )
+            await anyio.to_thread.run_sync(partial(self._fellow.toggle_schedule, schedule_id, fellow_data["enabled"]))
         else:
             # Fellow library doesn't have a general update_schedule method.
             # For fields beyond enabled, we'd need to delete and recreate.

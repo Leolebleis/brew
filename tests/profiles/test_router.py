@@ -87,9 +87,7 @@ async def test_get_profile_returns_404(client: AsyncClient, mock_profile_service
 
 
 @pytest.mark.anyio
-async def test_create_profile_from_fields_returns_201(
-    client: AsyncClient, mock_profile_service: AsyncMock
-) -> None:
+async def test_create_profile_from_fields_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile.return_value = ProfileCreateResult(
         outcome=ProfileCreateOutcome.SUCCESS,
         profile=SAMPLE_PROFILE,
@@ -120,9 +118,7 @@ async def test_create_profile_from_fields_returns_201(
 
 
 @pytest.mark.anyio
-async def test_create_profile_from_link_returns_201(
-    client: AsyncClient, mock_profile_service: AsyncMock
-) -> None:
+async def test_create_profile_from_link_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile_from_link.return_value = ProfileCreateResult(
         outcome=ProfileCreateOutcome.SUCCESS,
         profile=SAMPLE_PROFILE,
