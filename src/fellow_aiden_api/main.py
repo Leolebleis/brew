@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from fellow_aiden_api.dependencies import require_api_key
 from fellow_aiden_api.device.router import router as device_router
 from fellow_aiden_api.health.router import router as health_router
+from fellow_aiden_api.profiles.router import router as profiles_router
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(device_router)
+app.include_router(profiles_router)
 
 
 @app.exception_handler(Exception)
