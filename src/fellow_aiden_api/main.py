@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
 
     password = settings.fellow_password.get_secret_value()
@@ -59,9 +59,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     app.dependency_overrides.clear()
 
 
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
+    # When MCP is enabled, its sub-app lifespan must run to initialize the session manager.
+    if _mcp_enabled:
+        async with _mcp_app.lifespan(app), _app_lifespan(app):
+            yield
+    else:
+        async with _app_lifespan(app):
+            yield
+
+
 app = FastAPI(
     title="Fellow Aiden API",
-    root_path="/coffee/api",
     lifespan=lifespan,
     dependencies=[Depends(require_api_key)],
 )
