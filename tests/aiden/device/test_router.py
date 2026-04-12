@@ -4,9 +4,9 @@ import pytest
 from httpx import AsyncClient
 
 from brew.aiden.device.dependencies import get_device_service
-from brew.aiden.device.model.device import Device
 from brew.errors import CloudUnreachableError
 from brew.main import app
+from tests.aiden.device.conftest import make_device
 
 
 @pytest.fixture
@@ -22,7 +22,7 @@ def _override_device_service(mock_device_service: AsyncMock) -> None:
 
 
 async def test_get_device_returns_200(client: AsyncClient, mock_device_service: AsyncMock) -> None:
-    mock_device_service.get_device.return_value = Device(
+    mock_device_service.get_device.return_value = make_device(
         brewer_id="b1", display_name="My Aiden", firmware_version="3.2.1"
     )
     response = await client.get("/device")

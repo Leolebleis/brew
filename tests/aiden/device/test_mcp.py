@@ -6,8 +6,8 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from brew.aiden.device.mcp import register_device_mcp
-from brew.aiden.device.model.device import Device
 from brew.errors import CloudUnreachableError
+from tests.aiden.device.conftest import make_device
 
 
 @pytest.fixture
@@ -23,7 +23,9 @@ def mcp(mock_service: AsyncMock) -> FastMCP:
 
 
 async def test_get_device_resource_returns_device_info(mcp: FastMCP, mock_service: AsyncMock) -> None:
-    mock_service.get_device.return_value = Device(brewer_id="b1", display_name="My Aiden", firmware_version="3.2.1")
+    mock_service.get_device.return_value = make_device(
+        brewer_id="b1", display_name="My Aiden", firmware_version="3.2.1"
+    )
     result = await mcp.read_resource("coffee://device")
     data = json.loads(result.contents[0].content)
     assert data["brewer_id"] == "b1"

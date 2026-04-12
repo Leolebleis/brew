@@ -2,14 +2,15 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from brew.aiden.device.model.device import Device, DeviceSettings
+from brew.aiden.device.model.device import DeviceSettings
 from brew.aiden.device.service import DeviceService
 from brew.errors import CloudUnreachableError
+from tests.aiden.device.conftest import make_device
 
 
 async def test_get_device_success() -> None:
     mock_client = AsyncMock()
-    expected_device = Device(brewer_id="b1", display_name="Aiden", firmware_version="3.0")
+    expected_device = make_device(brewer_id="b1", display_name="Aiden", firmware_version="3.0")
     mock_client.get_device.return_value = expected_device
 
     service = DeviceService(client=mock_client)
