@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -193,3 +194,32 @@ async def test_update_schedule_raises_cloud_error_on_generic_exception() -> None
     client = FellowScheduleHttpClient(fellow=mock_fellow)
     with pytest.raises(CloudUnreachableError):
         await client.update_schedule("s0", ScheduleUpdate(enabled=False))
+
+
+def test_mapper_fills_user_notified_at_from_epoch_zero() -> None:
+    raw = {
+        "id": "s0",
+        "days": [False, False, False, False, False, False, False],
+        "secondFromStartOfTheDay": 45600,
+        "enabled": True,
+        "amountOfWater": 528,
+        "profileId": "p0",
+        "userNotifiedAt": "1970-01-01T00:00:00.000Z",
+    }
+    schedule = FellowScheduleHttpMapper.to_entity(raw)
+    assert schedule.user_notified_at is None  # epoch 0 means never fired
+
+
+def test_mapper_fills_user_notified_at_from_real_timestamp() -> None:
+
+    raw = {
+        "id": "s1",
+        "days": [True, False, False, False, False, False, False],
+        "secondFromStartOfTheDay": 45600,
+        "enabled": True,
+        "amountOfWater": 528,
+        "profileId": "p0",
+        "userNotifiedAt": "2026-04-12T10:00:00.000Z",
+    }
+    schedule = FellowScheduleHttpMapper.to_entity(raw)
+    assert schedule.user_notified_at == datetime(2026, 4, 12, 10, 0, 0, tzinfo=UTC)

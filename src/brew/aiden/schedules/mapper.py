@@ -13,6 +13,7 @@ class ScheduleMapper:
             enabled=schedule.enabled,
             amount_of_water=schedule.amount_of_water,
             profile_id=schedule.profile_id,
+            user_notified_at=schedule.user_notified_at,
         )
 
     @staticmethod

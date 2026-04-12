@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -8,3 +10,4 @@ class ScheduleAPIResponse(BaseModel):
     enabled: bool
     amount_of_water: int
     profile_id: str
+    user_notified_at: datetime | None
