@@ -1,7 +1,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from fellow_aiden_api.main import app
+from brew.main import app
 
 
 @pytest.fixture

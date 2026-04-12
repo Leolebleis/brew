@@ -1,6 +1,0 @@
-from fellow_aiden_api.device.service import DeviceService
-
-
-def get_device_service() -> DeviceService:
-    msg = "Must be overridden — wired in app lifespan"
-    raise NotImplementedError(msg)

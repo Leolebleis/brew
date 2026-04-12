@@ -1,6 +1,6 @@
-# Fellow Aiden API
+# BREW — BREW Regularly Entangles Wires
 
-REST API and MCP server for [Fellow Aiden](https://fellowproducts.com/products/aiden) coffee machines. Control your brewer through HTTP endpoints or natural language via [Claude](https://claude.ai) and other MCP clients.
+Self-hosted REST API and MCP server for [Fellow Aiden](https://fellowproducts.com/products/aiden) coffee machines. Control your brewer through HTTP endpoints or natural language via [Claude](https://claude.ai) and other MCP clients.
 
 Built with FastAPI, powered by the [fellow-aiden](https://github.com/9b/fellow-aiden) Python library.
 
@@ -8,9 +8,8 @@ Built with FastAPI, powered by the [fellow-aiden](https://github.com/9b/fellow-a
 
 - **REST API** -- full control over device settings, brew profiles, and schedules
 - **MCP Server** -- expose your coffee machine to LLMs via the [Model Context Protocol](https://modelcontextprotocol.io)
-- **Brew Now** -- trigger an immediate brew from the API or through natural language
 - **Profile Management** -- create, update, delete, and share brew profiles
-- **Schedule Management** -- set up recurring brews on specific days and times
+- **Schedule Management** -- set up one-time or recurring brews on specific days and times
 
 ## Quick Start
 
@@ -43,7 +42,7 @@ The API is now available at `http://localhost:8000`.
 
 ```bash
 uv sync
-uv run uvicorn fellow_aiden_api.main:app --port 8000
+uv run uvicorn brew.main:app --port 8000
 ```
 
 ## Configuration
@@ -55,9 +54,33 @@ uv run uvicorn fellow_aiden_api.main:app --port 8000
 | `FELLOW_API_KEY` | No | API key for request authentication. If unset, all requests are allowed. |
 | `FELLOW_MCP_ENABLED` | No | Set to `true` to enable the MCP server at `/mcp`. Default: `false`. |
 
-## API Documentation
+## Endpoints
 
-Once running, visit `http://localhost:8000/docs` for the interactive Swagger UI.
+| Path | Description |
+|---|---|
+| `GET /device` | Device info and settings |
+| `GET /profiles` | All brew profiles |
+| `POST /profiles` | Create a profile |
+| `GET /schedules` | All schedules |
+| `POST /schedules` | Create a schedule |
+| `GET /mcp/` | MCP server (when enabled) |
+| `GET /health` | Health check |
+
+Once running, visit `http://localhost:8000/docs` for the full interactive Swagger UI.
+
+## Error format
+
+All errors use a consistent envelope:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Profile 123 not found",
+    "context": {}
+  }
+}
+```
 
 ## MCP Server
 
@@ -76,13 +99,12 @@ When `FELLOW_MCP_ENABLED=true`, an MCP endpoint is available at `/mcp/` using St
 
 | Tool | Description |
 |---|---|
-| `brew_now` | Trigger an immediate brew with a specific profile |
 | `update_device_setting` | Change device settings (name, volume, etc.) |
 | `create_profile` | Create a profile from scratch or import from a shared link |
 | `update_profile` | Update fields on an existing profile |
 | `delete_profile` | Delete a profile |
 | `generate_profile_link` | Get a shareable URL for a profile |
-| `create_schedule` | Schedule a recurring brew |
+| `create_schedule` | Schedule a one-time or recurring brew |
 | `update_schedule` | Update an existing schedule |
 | `delete_schedule` | Delete a schedule |
 
