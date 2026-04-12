@@ -5,10 +5,7 @@ from fastmcp.exceptions import ToolError
 
 from fellow_aiden_api.device.model.device import DeviceSettings
 from fellow_aiden_api.device.service import DeviceGetOutcome, DeviceService, DeviceSettingsOutcome
-
-_FELLOW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. This is usually transient — suggest the user wait a few minutes and retry."
-)
+from fellow_aiden_api.mcp_errors import FELLOW_UNAVAILABLE_MSG
 
 
 def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
@@ -16,7 +13,7 @@ def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
     async def get_device() -> str:
         result = await service.get_device()
         if result.outcome != DeviceGetOutcome.SUCCESS or result.device is None:
-            return json.dumps({"error": _FELLOW_UNAVAILABLE_MSG})
+            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
         return json.dumps(
             {
                 "brewer_id": result.device.brewer_id,
@@ -35,5 +32,5 @@ def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
         settings = DeviceSettings(setting=setting, value=value)
         result = await service.adjust_setting(settings)
         if result.outcome != DeviceSettingsOutcome.SUCCESS:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Device setting '{setting}' updated successfully."

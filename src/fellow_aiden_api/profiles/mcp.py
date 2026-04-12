@@ -5,6 +5,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from fellow_aiden_api.mcp_errors import FELLOW_UNAVAILABLE_MSG
 from fellow_aiden_api.profiles.model.profile import ProfileCreate, ProfileUpdate
 from fellow_aiden_api.profiles.service import (
     ProfileCreateOutcome,
@@ -16,9 +17,6 @@ from fellow_aiden_api.profiles.service import (
     ProfileUpdateOutcome,
 )
 
-_FELLOW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. This is usually transient — suggest the user wait a few minutes and retry."
-)
 _PROFILE_NOT_FOUND_MSG = (
     "No profile found with ID '{profile_id}'. Use the coffee://profiles resource to see available profiles."
 )
@@ -32,7 +30,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
     async def list_profiles() -> str:
         result = await service.list_profiles()
         if result.outcome != ProfileListOutcome.SUCCESS or result.profiles is None:
-            return json.dumps({"error": _FELLOW_UNAVAILABLE_MSG})
+            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
         return json.dumps([asdict(p) for p in result.profiles])
 
     @mcp.resource("coffee://profiles/{profile_id}", description="A single brew profile by ID.")
@@ -41,7 +39,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         if result.outcome == ProfileGetOutcome.NOT_FOUND:
             return json.dumps({"error": _PROFILE_NOT_FOUND_MSG.format(profile_id=profile_id)})
         if result.outcome != ProfileGetOutcome.SUCCESS or result.profile is None:
-            return json.dumps({"error": _FELLOW_UNAVAILABLE_MSG})
+            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
         return json.dumps(asdict(result.profile))
 
     @mcp.tool(
@@ -93,7 +91,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
             )
             result = await service.create_profile(create)
         if result.outcome != ProfileCreateOutcome.SUCCESS or result.profile is None:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return json.dumps({"status": "created", "profile": asdict(result.profile)})
 
     @mcp.tool(
@@ -134,7 +132,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         )
         result = await service.update_profile(profile_id, update)
         if result.outcome != ProfileUpdateOutcome.SUCCESS:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Profile '{profile_id}' updated successfully."
 
     @mcp.tool(
@@ -144,7 +142,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
     async def delete_profile(profile_id: str) -> str:
         result = await service.delete_profile(profile_id)
         if result.outcome != ProfileDeleteOutcome.SUCCESS:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Profile '{profile_id}' deleted."
 
     @mcp.tool(
@@ -154,5 +152,5 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
     async def generate_profile_link(profile_id: str) -> str:
         result = await service.generate_link(profile_id)
         if result.outcome != ProfileLinkOutcome.SUCCESS or result.link is None:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return json.dumps({"profile_id": profile_id, "share_url": result.link.url})

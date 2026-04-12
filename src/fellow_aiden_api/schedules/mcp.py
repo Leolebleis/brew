@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from fellow_aiden_api.mcp_errors import FELLOW_UNAVAILABLE_MSG
 from fellow_aiden_api.schedules.model.schedule import ScheduleCreate, ScheduleUpdate
 from fellow_aiden_api.schedules.service import (
     ScheduleCreateOutcome,
@@ -16,12 +17,6 @@ from fellow_aiden_api.schedules.service import (
     ScheduleUpdateOutcome,
 )
 
-_FELLOW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. This is usually transient — suggest the user wait a few minutes and retry."
-)
-_BREW_UNAVAILABLE_MSG = (
-    "Fellow cloud API is unreachable. Could not start brew — suggest the user wait a few minutes and retry."
-)
 _SECONDS_PER_DAY = 86400
 
 
@@ -33,7 +28,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
     async def list_schedules() -> str:
         result = await service.list_schedules()
         if result.outcome != ScheduleListOutcome.SUCCESS or result.schedules is None:
-            return json.dumps({"error": _FELLOW_UNAVAILABLE_MSG})
+            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
         return json.dumps([asdict(s) for s in result.schedules])
 
     @mcp.tool(
@@ -60,7 +55,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
         )
         result = await service.create_schedule(create)
         if result.outcome != ScheduleCreateOutcome.SUCCESS or result.schedule is None:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return json.dumps({"status": "created", "schedule": asdict(result.schedule)})
 
     @mcp.tool(
@@ -83,7 +78,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
         )
         result = await service.update_schedule(schedule_id, update)
         if result.outcome != ScheduleUpdateOutcome.SUCCESS:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Schedule '{schedule_id}' updated successfully."
 
     @mcp.tool(
@@ -93,7 +88,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
     async def delete_schedule(schedule_id: str) -> str:
         result = await service.delete_schedule(schedule_id)
         if result.outcome != ScheduleDeleteOutcome.SUCCESS:
-            raise ToolError(_FELLOW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Schedule '{schedule_id}' deleted."
 
     @mcp.tool(
@@ -124,18 +119,17 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
         )
         result = await service.create_schedule(create)
         if result.outcome != ScheduleCreateOutcome.SUCCESS or result.schedule is None:
-            raise ToolError(_BREW_UNAVAILABLE_MSG)
+            raise ToolError(FELLOW_UNAVAILABLE_MSG)
 
         schedule_id = result.schedule.id
 
-        # Wait for the schedule to trigger, then clean up
-        await asyncio.sleep(10)
+        async def _cleanup() -> None:
+            await asyncio.sleep(10)
+            await service.delete_schedule(schedule_id)
 
-        delete_result = await service.delete_schedule(schedule_id)
-        if delete_result.outcome != ScheduleDeleteOutcome.SUCCESS:
-            return (
-                f"Brew started successfully, but could not clean up temporary schedule "
-                f"'{schedule_id}'. It should be deleted manually."
-            )
+        _cleanup_task = asyncio.create_task(_cleanup())  # noqa: RUF006
 
-        return "Brew started successfully. The temporary schedule has been cleaned up."
+        return (
+            f"Brew scheduled to start in ~5 seconds. "
+            f"Temporary schedule '{schedule_id}' will be cleaned up automatically."
+        )
