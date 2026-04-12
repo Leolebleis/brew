@@ -6,14 +6,9 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from brew.aiden.schedules.model.schedule import ScheduleCreate, ScheduleUpdate
-from brew.aiden.schedules.service import (
-    ScheduleCreateOutcome,
-    ScheduleDeleteOutcome,
-    ScheduleListOutcome,
-    ScheduleService,
-    ScheduleUpdateOutcome,
-)
-from brew.mcp_errors import FELLOW_UNAVAILABLE_MSG
+from brew.aiden.schedules.service import ScheduleService
+from brew.errors import DomainError
+from brew.response_models import ErrorResponse
 
 
 def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
@@ -22,10 +17,12 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         description="All scheduled brews with days, time, water amount, and linked profile.",
     )
     async def list_schedules() -> str:
-        result = await service.list_schedules()
-        if result.outcome != ScheduleListOutcome.SUCCESS or result.schedules is None:
-            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
-        return json.dumps([asdict(s) for s in result.schedules])
+        try:
+            schedules = await service.list_schedules()
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            return json.dumps({"error": body.model_dump()})
+        return json.dumps([asdict(s) for s in schedules], default=str)
 
     @mcp.tool(
         description=(
@@ -52,10 +49,12 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
             amount_of_water=water_ml,
             profile_id=profile_id,
         )
-        result = await service.create_schedule(create)
-        if result.outcome != ScheduleCreateOutcome.SUCCESS or result.schedule is None:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
-        return json.dumps({"status": "created", "schedule": asdict(result.schedule)})
+        try:
+            schedule = await service.create_schedule(create)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+        return json.dumps({"status": "created", "schedule": asdict(schedule)}, default=str)
 
     @mcp.tool(
         description=(
@@ -79,9 +78,11 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
             amount_of_water=water_ml,
             profile_id=profile_id,
         )
-        result = await service.update_schedule(schedule_id, update)
-        if result.outcome != ScheduleUpdateOutcome.SUCCESS:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
+        try:
+            await service.update_schedule(schedule_id, update)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
         return f"Schedule '{schedule_id}' updated successfully."
 
     @mcp.tool(
@@ -89,7 +90,9 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_schedule(schedule_id: str) -> str:
-        result = await service.delete_schedule(schedule_id)
-        if result.outcome != ScheduleDeleteOutcome.SUCCESS:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
+        try:
+            await service.delete_schedule(schedule_id)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
         return f"Schedule '{schedule_id}' deleted."
