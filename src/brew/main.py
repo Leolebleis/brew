@@ -6,8 +6,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
-from fellow_aiden import FellowAiden
 
+from brew.aiden.dependencies import build_fellow_client, get_aiden_settings
 from brew.aiden.device.client import FellowDeviceHttpClient
 from brew.aiden.device.dependencies import get_device_service
 from brew.aiden.device.router import router as device_router
@@ -29,10 +29,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
-    settings = get_settings()
-
-    password = settings.fellow_password.get_secret_value()
-    fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, password)
+    _ = get_settings()  # validate app-wide settings
+    _ = get_aiden_settings()  # validate aiden settings (raises if creds missing)
+    fellow = await asyncio.to_thread(build_fellow_client)
 
     device_client = FellowDeviceHttpClient(fellow=fellow)
     profile_client = FellowProfileHttpClient(fellow=fellow)
