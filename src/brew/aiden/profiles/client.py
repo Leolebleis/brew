@@ -12,6 +12,7 @@ Ported from:
 import asyncio
 import dataclasses
 import logging
+from datetime import datetime
 from typing import Any, Protocol
 
 from fellow_aiden import FellowAiden
@@ -65,6 +66,12 @@ class FellowProfileClient(Protocol):
     async def generate_link(self, profile_id: str) -> ProfileLink: ...
 
 
+def _parse_iso(val: str | None) -> datetime | None:
+    if not isinstance(val, str):
+        return None
+    return datetime.fromisoformat(val)
+
+
 # ---------- Mapper ----------
 
 
@@ -88,6 +95,12 @@ class FellowProfileHttpMapper:
             batch_pulses_number=data.get("batchPulsesNumber"),
             batch_pulses_interval=data.get("batchPulsesInterval"),
             batch_pulse_temperatures=data.get("batchPulseTemperatures"),
+            folder=data.get("folder", "Custom"),
+            is_default_profile=data.get("isDefaultProfile", False),
+            instant_brew=data.get("instantBrew", False),
+            created_at=_parse_iso(data.get("createdAt")),
+            updated_at=_parse_iso(data.get("updatedAt")),
+            last_used_time=_parse_iso(data.get("lastUsedTime")),
         )
 
     @staticmethod

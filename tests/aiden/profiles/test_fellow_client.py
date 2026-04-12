@@ -1,3 +1,4 @@
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import pytest
@@ -44,7 +45,42 @@ EXPECTED_PROFILE = Profile(
     batch_pulses_number=1,
     batch_pulses_interval=10,
     batch_pulse_temperatures=[93.0],
+    created_at=datetime(2024, 1, 1, tzinfo=UTC),
+    last_used_time=None,  # integer Unix timestamps are not parsed; treated as None
 )
+
+
+def test_mapper_fills_extended_fields() -> None:
+    raw = {
+        "id": "d24",
+        "title": "Regalia, Kenya Gitare AB",
+        "profileType": 0,
+        "ratio": 16.5,
+        "bloomEnabled": True,
+        "bloomRatio": 2.0,
+        "bloomDuration": 40,
+        "bloomTemperature": 94.0,
+        "ssPulsesEnabled": True,
+        "ssPulsesNumber": 3,
+        "ssPulsesInterval": 23,
+        "ssPulseTemperatures": [94.0, 94.0, 94.0],
+        "batchPulsesEnabled": True,
+        "batchPulsesNumber": 4,
+        "batchPulsesInterval": 30,
+        "batchPulseTemperatures": [94.0, 94.0, 94.0, 94.0],
+        "folder": "Custom",
+        "isDefaultProfile": False,
+        "instantBrew": False,
+        "createdAt": "2026-04-12T10:34:18.948Z",
+        "updatedAt": "2026-04-12T10:34:18.948Z",
+        "lastUsedTime": None,
+    }
+    profile = FellowProfileHttpMapper.to_entity(raw)
+    assert profile.folder == "Custom"
+    assert profile.is_default_profile is False
+    assert profile.instant_brew is False
+    assert profile.created_at is not None
+    assert profile.last_used_time is None
 
 
 def test_mapper_converts_fellow_dict_to_profile() -> None:

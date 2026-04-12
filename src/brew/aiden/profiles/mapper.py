@@ -26,6 +26,12 @@ class ProfileMapper:
             batch_pulses_number=profile.batch_pulses_number,
             batch_pulses_interval=profile.batch_pulses_interval,
             batch_pulse_temperatures=profile.batch_pulse_temperatures,
+            folder=profile.folder,
+            is_default_profile=profile.is_default_profile,
+            instant_brew=profile.instant_brew,
+            created_at=profile.created_at,
+            updated_at=profile.updated_at,
+            last_used_time=profile.last_used_time,
         )
 
     @staticmethod

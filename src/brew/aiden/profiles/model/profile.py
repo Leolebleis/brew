@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,13 @@ class Profile:
     batch_pulses_number: int | None = None
     batch_pulses_interval: int | None = None
     batch_pulse_temperatures: list[float] | None = None
+    # Fellow metadata fields
+    folder: str = "Custom"
+    is_default_profile: bool = False
+    instant_brew: bool = False
+    created_at: datetime | None = None
+    updated_at: datetime | None = None
+    last_used_time: datetime | None = None
 
 
 @dataclass(frozen=True)
