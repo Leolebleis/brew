@@ -13,7 +13,7 @@ HTTP API wrapping the Fellow Aiden cloud API, self-hosted on Raspberry Pi.
 
 - Fellow cloud API only -- no local/LAN API exists
 - Can manage profiles, schedules, and device settings; **cannot trigger a brew remotely**
-- JWT tokens expire quickly (~15min) -- must handle refresh
+- JWT tokens expire quickly (~15min) -- `fellow-aiden` library handles re-auth automatically on 401
 - Aiden connects via 2.4 GHz WiFi only
 
 ## Project Structure
@@ -51,10 +51,37 @@ Three-layer clean architecture (API -> Domain <- Infrastructure) with domain-fir
 
 Run the app and see `GET /coffee/api/docs` (Swagger UI) or `GET /coffee/api/openapi.json`
 
+## MCP Server
+
+Optional MCP (Model Context Protocol) server mounted at `/coffee/api/mcp` when `FELLOW_MCP_ENABLED=true`.
+
+- Built with `fastmcp`, shares the service layer with FastAPI routers
+- Transport: Streamable HTTP
+- Auth: same `X-API-Key` header as REST API
+- Resources: `coffee://device`, `coffee://profiles`, `coffee://profiles/{id}`, `coffee://schedules`
+- Tools: `brew_now`, `update_device_setting`, `create_profile`, `update_profile`, `delete_profile`, `generate_profile_link`, `create_schedule`, `update_schedule`, `delete_schedule`
+- `brew_now` creates a temporary schedule ~5s from now, waits, then deletes it
+- Each domain has an `mcp.py` alongside its `router.py` with a `register_*_mcp()` function
+
+Client config (`.mcp.json`):
+```json
+{
+  "mcpServers": {
+    "fellow-aiden": {
+      "type": "http",
+      "url": "https://raspberry-pi/coffee/api/mcp",
+      "headers": {
+        "X-API-Key": "${FELLOW_API_KEY}"
+      }
+    }
+  }
+}
+```
+
 ## Gotchas
 
 - `ty` reports false positive `missing-argument` on `Settings()` -- suppressed with `# ty: ignore[missing-argument]`
-- Token refresh not yet implemented -- app will return 503s after ~15min without restart
+- `token_refresh_interval_seconds` config field exists but is unused -- `fellow-aiden` library handles re-auth on 401 transparently
 
 ## Testing
 

@@ -14,3 +14,5 @@ class Settings(BaseSettings):
     port: int = 8000
 
     token_refresh_interval_seconds: int = 780
+
+    mcp_enabled: bool = False

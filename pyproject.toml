@@ -9,6 +9,7 @@ dependencies = [
     "uvicorn[standard]>=0.34",
     "pydantic-settings>=2.7",
     "fellow-aiden @ git+https://github.com/9b/fellow-aiden.git",
+    "fastmcp>=2",
     "httpx>=0.28",
 ]
 
@@ -39,7 +40,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "ANN", "PLR2004", "S104"]
+"tests/**/*.py" = ["S101", "ANN", "PLR2004", "S104", "S106"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
