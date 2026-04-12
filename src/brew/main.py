@@ -103,4 +103,7 @@ if _mcp_enabled:
 @app.exception_handler(Exception)
 async def catch_all_handler(_request: Request, _exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception")
-    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+    return JSONResponse(
+        status_code=500,
+        content={"error": {"code": "unknown", "message": "Internal server error", "context": {}}},
+    )
