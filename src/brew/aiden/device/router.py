@@ -1,12 +1,12 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 
 from brew.aiden.device.dependencies import get_device_service
 from brew.aiden.device.mapper import DeviceMapper
 from brew.aiden.device.model.api.requests import DeviceSettingsAPIRequest
 from brew.aiden.device.model.api.responses import DeviceAPIResponse
-from brew.aiden.device.service import DeviceGetOutcome, DeviceService, DeviceSettingsOutcome
+from brew.aiden.device.service import DeviceService
 
 router = APIRouter(prefix="/device", tags=["device"])
 
@@ -15,14 +15,8 @@ router = APIRouter(prefix="/device", tags=["device"])
 async def get_device(
     service: Annotated[DeviceService, Depends(get_device_service)],
 ) -> DeviceAPIResponse:
-    result = await service.get_device()
-    match result.outcome:
-        case DeviceGetOutcome.SUCCESS if result.device is not None:
-            return DeviceMapper.to_api_response(result.device)
-        case DeviceGetOutcome.FELLOW_UNAVAILABLE:
-            raise HTTPException(status_code=503, detail=result.error)
-        case _:
-            raise HTTPException(status_code=500, detail="Unexpected outcome")
+    device = await service.get_device()
+    return DeviceMapper.to_api_response(device)
 
 
 @router.patch("/settings")
@@ -31,11 +25,5 @@ async def update_device_settings(
     service: Annotated[DeviceService, Depends(get_device_service)],
 ) -> dict[str, str]:
     settings = DeviceMapper.from_api_request(request)
-    result = await service.adjust_setting(settings)
-    match result.outcome:
-        case DeviceSettingsOutcome.SUCCESS:
-            return {"status": "ok"}
-        case DeviceSettingsOutcome.FELLOW_UNAVAILABLE:
-            raise HTTPException(status_code=503, detail=result.error)
-        case _:
-            raise HTTPException(status_code=500, detail="Unexpected outcome")
+    await service.adjust_setting(settings)
+    return {"status": "ok"}

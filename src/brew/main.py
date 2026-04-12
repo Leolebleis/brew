@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fellow_aiden import FellowAiden
 
-from brew.aiden.device.client.fellow_client import FellowDeviceClient
+from brew.aiden.device.client import FellowDeviceHttpClient
 from brew.aiden.device.dependencies import get_device_service
 from brew.aiden.device.router import router as device_router
 from brew.aiden.device.service import DeviceService
@@ -34,11 +34,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     password = settings.fellow_password.get_secret_value()
     fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, password)
 
-    device_client = FellowDeviceClient(fellow=fellow)
+    device_client = FellowDeviceHttpClient(fellow=fellow)
     profile_client = FellowProfileHttpClient(fellow=fellow)
     schedule_client = FellowScheduleClient(fellow=fellow)
 
-    device_service = DeviceService(facade=device_client)
+    device_service = DeviceService(client=device_client)
     profile_service = ProfileService(client=profile_client)
     schedule_service = ScheduleService(facade=schedule_client)
 

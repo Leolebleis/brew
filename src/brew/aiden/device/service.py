@@ -1,54 +1,19 @@
-import logging
-from dataclasses import dataclass
-from enum import Enum
+"""Device service — orchestrates the device client."""
 
-from brew.aiden.device.facade import DeviceFacade
+import logging
+
+from brew.aiden.device.client import FellowDeviceClient
 from brew.aiden.device.model.device import Device, DeviceSettings
 
 logger = logging.getLogger(__name__)
 
 
-class DeviceGetOutcome(Enum):
-    SUCCESS = "success"
-    FELLOW_UNAVAILABLE = "fellow_unavailable"
-
-
-class DeviceSettingsOutcome(Enum):
-    SUCCESS = "success"
-    FELLOW_UNAVAILABLE = "fellow_unavailable"
-
-
-@dataclass
-class DeviceGetResult:
-    outcome: DeviceGetOutcome
-    device: Device | None = None
-    error: str | None = None
-
-
-@dataclass
-class DeviceSettingsResult:
-    outcome: DeviceSettingsOutcome
-    error: str | None = None
-
-
 class DeviceService:
-    def __init__(self, facade: DeviceFacade) -> None:
-        self._facade = facade
+    def __init__(self, client: FellowDeviceClient) -> None:
+        self._client = client
 
-    async def get_device(self) -> DeviceGetResult:
-        try:
-            device = await self._facade.get_device()
-        except Exception:
-            logger.exception("Failed to fetch device")
-            return DeviceGetResult(outcome=DeviceGetOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable")
-        return DeviceGetResult(outcome=DeviceGetOutcome.SUCCESS, device=device)
+    async def get_device(self) -> Device:
+        return await self._client.get_device()
 
-    async def adjust_setting(self, settings: DeviceSettings) -> DeviceSettingsResult:
-        try:
-            await self._facade.adjust_setting(settings)
-        except Exception:
-            logger.exception("Failed to adjust setting")
-            return DeviceSettingsResult(
-                outcome=DeviceSettingsOutcome.FELLOW_UNAVAILABLE, error="Fellow cloud unavailable"
-            )
-        return DeviceSettingsResult(outcome=DeviceSettingsOutcome.SUCCESS)
+    async def adjust_setting(self, settings: DeviceSettings) -> None:
+        await self._client.adjust_setting(settings)

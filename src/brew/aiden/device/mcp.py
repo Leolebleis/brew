@@ -1,26 +1,24 @@
 import json
+from dataclasses import asdict
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from brew.aiden.device.model.device import DeviceSettings
-from brew.aiden.device.service import DeviceGetOutcome, DeviceService, DeviceSettingsOutcome
-from brew.mcp_errors import FELLOW_UNAVAILABLE_MSG
+from brew.aiden.device.service import DeviceService
+from brew.errors import DomainError
+from brew.response_models import ErrorResponse
 
 
 def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
     @mcp.resource("coffee://device", description="Coffee machine info — brewer ID, display name, firmware version.")
     async def get_device() -> str:
-        result = await service.get_device()
-        if result.outcome != DeviceGetOutcome.SUCCESS or result.device is None:
-            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
-        return json.dumps(
-            {
-                "brewer_id": result.device.brewer_id,
-                "display_name": result.device.display_name,
-                "firmware_version": result.device.firmware_version,
-            }
-        )
+        try:
+            device = await service.get_device()
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            return json.dumps({"error": body.model_dump()})
+        return json.dumps(asdict(device), default=str)
 
     @mcp.tool(
         description=("Change a device setting (e.g. display name, volume). Provide the setting name and new value."),
@@ -30,7 +28,9 @@ def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
         value: str | float | bool,  # noqa: FBT001
     ) -> str:
         settings = DeviceSettings(setting=setting, value=value)
-        result = await service.adjust_setting(settings)
-        if result.outcome != DeviceSettingsOutcome.SUCCESS:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
+        try:
+            await service.adjust_setting(settings)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
         return f"Device setting '{setting}' updated successfully."
