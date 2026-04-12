@@ -46,8 +46,32 @@ EXPECTED_PROFILE = Profile(
     batch_pulses_interval=10,
     batch_pulse_temperatures=[93.0],
     created_at=datetime(2024, 1, 1, tzinfo=UTC),
-    last_used_time=None,  # integer Unix timestamps are not parsed; treated as None
+    last_used_time=datetime.fromtimestamp(1234567890, tz=UTC),
 )
+
+
+def test_mapper_parses_integer_unix_epoch_timestamp() -> None:
+    raw = {
+        "id": "p_int",
+        "title": "t",
+        "profileType": 0,
+        "ratio": 16.0,
+        "bloomEnabled": True,
+        "bloomRatio": 2.0,
+        "bloomDuration": 40,
+        "bloomTemperature": 94.0,
+        "ssPulsesEnabled": True,
+        "ssPulsesNumber": 3,
+        "ssPulsesInterval": 23,
+        "ssPulseTemperatures": [94.0, 94.0, 94.0],
+        "batchPulsesEnabled": True,
+        "batchPulsesNumber": 4,
+        "batchPulsesInterval": 30,
+        "batchPulseTemperatures": [94.0, 94.0, 94.0, 94.0],
+        "lastUsedTime": 1700000000,  # integer epoch
+    }
+    profile = FellowProfileHttpMapper.to_entity(raw)
+    assert profile.last_used_time == datetime.fromtimestamp(1700000000, tz=UTC)
 
 
 def test_mapper_fills_extended_fields() -> None:
