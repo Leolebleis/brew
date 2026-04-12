@@ -1,7 +1,5 @@
-import asyncio
 import json
 from dataclasses import asdict
-from datetime import UTC, datetime
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -17,10 +15,8 @@ from brew.aiden.schedules.service import (
 )
 from brew.mcp_errors import FELLOW_UNAVAILABLE_MSG
 
-_SECONDS_PER_DAY = 86400
 
-
-def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # noqa: C901
+def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
     @mcp.resource(
         "coffee://schedules",
         description="All scheduled brews with days, time, water amount, and linked profile.",
@@ -33,10 +29,13 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
 
     @mcp.tool(
         description=(
-            "Schedule a recurring brew on specific days. "
-            "Days is a 7-element array (Sunday=index 0). "
-            "Time is seconds from midnight. "
-            "For one-off brews, use brew_now instead."
+            "Create a brew schedule. days is a 7-element bool array (Sunday=0); "
+            "all-false = one-time brew that fires at the NEXT occurrence of the given time. "
+            "time_seconds is seconds-since-midnight in the device's local timezone (NOT UTC). "
+            "Check `coffee://device` for the deviceTimezone field. "
+            "IMPORTANT: time_seconds is the READY time (when the brew finishes), not the start time. "
+            "Set it at least ~7 min in the future for batch brews and ~4 min for single-serve, "
+            "or the device will silently skip the schedule."
         ),
     )
     async def create_schedule(
@@ -59,7 +58,11 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
         return json.dumps({"status": "created", "schedule": asdict(result.schedule)})
 
     @mcp.tool(
-        description="Update specific fields on an existing schedule. Only provide the fields you want to change.",
+        description=(
+            "Update an existing brew schedule. Same day/time semantics as create_schedule — "
+            "see its description for details on day patterns, device-local TZ, and READY-time lead times. "
+            "Partial update: omit fields to leave unchanged."
+        ),
     )
     async def update_schedule(  # noqa: PLR0913
         schedule_id: str,
@@ -90,46 +93,3 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:  # no
         if result.outcome != ScheduleDeleteOutcome.SUCCESS:
             raise ToolError(FELLOW_UNAVAILABLE_MSG)
         return f"Schedule '{schedule_id}' deleted."
-
-    @mcp.tool(
-        description=(
-            "Brew immediately using a specific profile. "
-            "Creates a temporary schedule, waits for it to trigger, then cleans it up. "
-            "The user should have water and grounds ready."
-        ),
-    )
-    async def brew_now(profile_id: str, water_ml: int) -> str:
-        now = datetime.now(tz=UTC).astimezone()
-        current_day_index = (now.weekday() + 1) % 7  # Python Monday=0 -> Fellow Sunday=0
-        brew_seconds = now.hour * 3600 + now.minute * 60 + now.second + 5
-
-        # Handle midnight rollover
-        days = [False] * 7
-        if brew_seconds >= _SECONDS_PER_DAY:
-            brew_seconds -= _SECONDS_PER_DAY
-            current_day_index = (current_day_index + 1) % 7
-        days[current_day_index] = True
-
-        create = ScheduleCreate(
-            days=days,
-            second_from_start_of_day=brew_seconds,
-            enabled=True,
-            amount_of_water=water_ml,
-            profile_id=profile_id,
-        )
-        result = await service.create_schedule(create)
-        if result.outcome != ScheduleCreateOutcome.SUCCESS or result.schedule is None:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
-
-        schedule_id = result.schedule.id
-
-        async def _cleanup() -> None:
-            await asyncio.sleep(10)
-            await service.delete_schedule(schedule_id)
-
-        _cleanup_task = asyncio.create_task(_cleanup())  # noqa: RUF006
-
-        return (
-            f"Brew scheduled to start in ~5 seconds. "
-            f"Temporary schedule '{schedule_id}' will be cleaned up automatically."
-        )

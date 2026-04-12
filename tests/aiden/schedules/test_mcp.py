@@ -109,34 +109,3 @@ async def test_delete_schedule_success(mcp: FastMCP, mock_service: AsyncMock) ->
     result = await mcp.call_tool("delete_schedule", {"schedule_id": "s1"})
     assert "s1" in result.content[0].text
     assert "deleted" in result.content[0].text
-
-
-async def test_brew_now_creates_schedule_and_returns_immediately(mcp: FastMCP, mock_service: AsyncMock) -> None:
-    created_schedule = Schedule(
-        id="s-temp",
-        days=[False] * 7,
-        second_from_start_of_day=0,
-        enabled=True,
-        amount_of_water=500,
-        profile_id="p1",
-    )
-    mock_service.create_schedule.return_value = ScheduleCreateResult(
-        outcome=ScheduleCreateOutcome.SUCCESS,
-        schedule=created_schedule,
-    )
-
-    result = await mcp.call_tool("brew_now", {"profile_id": "p1", "water_ml": 500})
-
-    text = result.content[0].text
-    assert "s-temp" in text
-    mock_service.create_schedule.assert_called_once()
-
-
-async def test_brew_now_fails_when_creation_fails(mcp: FastMCP, mock_service: AsyncMock) -> None:
-    mock_service.create_schedule.return_value = ScheduleCreateResult(
-        outcome=ScheduleCreateOutcome.FELLOW_UNAVAILABLE,
-        error="Fellow cloud unavailable",
-    )
-
-    with pytest.raises(ToolError):
-        await mcp.call_tool("brew_now", {"profile_id": "p1", "water_ml": 500})
