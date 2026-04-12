@@ -1,7 +1,5 @@
 """Unit tests for the ErrorResponse Pydantic model."""
 
-from brew.response_models import ErrorResponse
-
 from brew.errors import (
     CloudUnreachableError,
     NotFoundError,
@@ -9,6 +7,7 @@ from brew.errors import (
     UnknownError,
     ValidationError,
 )
+from brew.response_models import ErrorResponse
 
 
 def test_from_validation_error():

@@ -1,6 +1,7 @@
 """Unit tests for the DomainError hierarchy."""
 
 import pytest
+
 from brew.errors import (
     AuthFailedError,
     CloudUnreachableError,

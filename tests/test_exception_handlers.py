@@ -1,6 +1,5 @@
 """Integration tests for the DomainError -> HTTP response handler."""
 
-from brew.exception_handlers import register_exception_handlers
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -12,6 +11,7 @@ from brew.errors import (
     UnknownError,
     ValidationError,
 )
+from brew.exception_handlers import register_exception_handlers
 
 
 def _make_app_with_handler() -> FastAPI:
