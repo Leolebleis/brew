@@ -143,6 +143,27 @@ async def test_update_schedule_raises_validation_error_on_unsupported_fields() -
     mock_fellow.toggle_schedule.assert_not_called()
 
 
+async def test_update_schedule_rejects_multiple_unsupported_fields() -> None:
+    mock_fellow = MagicMock()
+
+    client = FellowScheduleHttpClient(fellow=mock_fellow)
+    with pytest.raises(ValidationError) as exc_info:
+        await client.update_schedule(
+            "s0",
+            ScheduleUpdate(
+                days=[True, False, False, False, False, False, False],
+                amount_of_water=500,
+            ),
+        )
+
+    err = exc_info.value
+    assert "amountOfWater" in err.message
+    assert "days" in err.message
+    assert err.field == "amountOfWater"
+    assert err.reason == "Fellow library limitation"
+    mock_fellow.toggle_schedule.assert_not_called()
+
+
 async def test_update_schedule_no_op_when_empty() -> None:
     mock_fellow = MagicMock()
 
