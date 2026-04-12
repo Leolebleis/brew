@@ -1,7 +1,7 @@
 [project]
 name = "fellow-aiden-api"
 version = "0.1.0"
-description = "HTTP API wrapping the Fellow Aiden cloud API"
+description = "REST API and MCP server for Fellow Aiden coffee machines"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [

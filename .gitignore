@@ -9,3 +9,5 @@ htmlcov/
 .pytest_cache/
 .ruff_cache/
 .worktrees/
+docs/superpowers/
+docker-compose.override.yml
