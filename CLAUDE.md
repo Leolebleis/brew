@@ -57,7 +57,7 @@ No binary `*Outcome` enums.
 
 ## Deployment
 
-- Docker container `fellow-aiden-api`
+- Docker container `brew` (compose service + container name match the Python package)
 - Requires `.env` with `FELLOW_FELLOW_EMAIL`, `FELLOW_FELLOW_PASSWORD`, optional `FELLOW_API_KEY`
 - Set `FELLOW_MCP_ENABLED=true` to enable the MCP server
 - Dockerfile needs `git` in builder stage (for git+ dependency) and `--no-editable` flag
