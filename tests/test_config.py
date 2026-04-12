@@ -1,6 +1,6 @@
 import pytest
 
-from fellow_aiden_api.config import Settings
+from brew.config import Settings
 
 
 def test_settings_loads_from_env() -> None:

@@ -1,7 +1,7 @@
 [project]
-name = "fellow-aiden-api"
-version = "0.1.0"
-description = "REST API and MCP server for Fellow Aiden coffee machines"
+name = "brew"
+version = "0.2.0"
+description = "BREW Regularly Entangles Wires — REST API and MCP server for Fellow Aiden coffee machines"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -47,7 +47,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.coverage.run]
-source = ["fellow_aiden_api"]
+source = ["brew"]
 
 [tool.coverage.report]
 show_missing = true
@@ -61,4 +61,4 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/fellow_aiden_api"]
+packages = ["src/brew"]

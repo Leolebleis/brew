@@ -4,7 +4,7 @@ from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from fellow_aiden_api.mcp_auth import McpApiKeyMiddleware
+from brew.mcp_auth import McpApiKeyMiddleware
 
 
 async def _ok_endpoint(_request: Request) -> Response:

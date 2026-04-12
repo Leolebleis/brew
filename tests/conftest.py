@@ -3,8 +3,8 @@ from collections.abc import AsyncGenerator
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from fellow_aiden_api.dependencies import get_settings
-from fellow_aiden_api.main import app
+from brew.dependencies import get_settings
+from brew.main import app
 
 
 @pytest.fixture(autouse=True)
