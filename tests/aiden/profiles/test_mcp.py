@@ -1,4 +1,5 @@
 import json
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -112,3 +113,26 @@ async def test_generate_profile_link_success(mcp: FastMCP, mock_service: AsyncMo
     assert data["profile_id"] == "p1"
     assert data["share_url"] == "https://fellow.app/p/abc123"
     mock_service.generate_link.assert_called_once_with("p1")
+
+
+async def test_create_profile_tool_serializes_non_json_primitives_gracefully(
+    mcp: FastMCP, mock_service: AsyncMock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify default=str is applied so datetime fields (added in Task 10) don't break serialization."""
+    profile = Profile(id="p5", title="Datetime Profile")
+    mock_service.create_profile_from_link.return_value = profile
+
+    # Patch asdict in the mcp module to inject a non-serializable datetime value,
+    # simulating what Task 10 will add to the Profile entity.
+    dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=UTC)
+    monkeypatch.setattr(
+        "brew.aiden.profiles.mcp.asdict",
+        lambda _p: {"id": "p5", "title": "Datetime Profile", "created_at": dt},
+    )
+
+    result = await mcp.call_tool("create_profile", {"brew_link_url": "https://fellow.app/p/xyz"})
+    # Must not raise — and must be valid JSON
+    data = json.loads(result.content[0].text)
+    assert data["status"] == "created"
+    assert data["profile"]["id"] == "p5"
+    assert isinstance(data["profile"]["created_at"], str)

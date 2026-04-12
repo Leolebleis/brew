@@ -23,7 +23,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         except DomainError as e:
             body = ErrorResponse.from_domain_error(e)
             return json.dumps({"error": body.model_dump()})
-        return json.dumps([asdict(p) for p in profiles])
+        return json.dumps([asdict(p) for p in profiles], default=str)
 
     @mcp.resource("coffee://profiles/{profile_id}", description="A single brew profile by ID.")
     async def get_profile(profile_id: str) -> str:
@@ -32,7 +32,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         except DomainError as e:
             body = ErrorResponse.from_domain_error(e)
             return json.dumps({"error": body.model_dump()})
-        return json.dumps(asdict(profile))
+        return json.dumps(asdict(profile), default=str)
 
     @mcp.tool(
         description=(
@@ -90,7 +90,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         except DomainError as e:
             body = ErrorResponse.from_domain_error(e)
             raise ToolError(json.dumps({"error": body.model_dump()})) from e
-        return json.dumps({"status": "created", "profile": asdict(profile)})
+        return json.dumps({"status": "created", "profile": asdict(profile)}, default=str)
 
     @mcp.tool(
         description="Update specific fields on an existing brew profile. Only provide the fields you want to change.",

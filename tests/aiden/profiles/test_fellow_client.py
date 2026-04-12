@@ -1,7 +1,10 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from brew.aiden.profiles.client import FellowProfileHttpClient, FellowProfileHttpMapper
-from brew.aiden.profiles.model.profile import Profile, ProfileCreate, ProfileLink
+from brew.aiden.profiles.model.profile import Profile, ProfileCreate, ProfileLink, ProfileUpdate
+from brew.errors import CloudUnreachableError, NotFoundError, UnknownError
 
 SAMPLE_FELLOW_PROFILE: dict = {
     "id": "p0",
@@ -103,3 +106,76 @@ async def test_generate_link_returns_profile_link() -> None:
     link = await client.generate_link("p0")
 
     assert link == ProfileLink(url="https://brew.link/abc123")
+
+
+async def test_update_profile_raises_not_found_on_library_exception() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.update_profile.side_effect = Exception("Profile not found")
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    with pytest.raises(NotFoundError) as exc_info:
+        await client.update_profile("p0", ProfileUpdate(title="Test"))
+
+    err = exc_info.value
+    assert err.resource_kind == "profile"
+    assert err.resource_id == "p0"
+
+
+async def test_update_profile_raises_cloud_error_on_generic_exception() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.update_profile.side_effect = Exception("timeout")
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    with pytest.raises(CloudUnreachableError):
+        await client.update_profile("p0", ProfileUpdate(title="Test"))
+
+
+async def test_delete_profile_raises_not_found_on_library_exception() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.delete_profile_by_id.side_effect = Exception("Profile not found")
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    with pytest.raises(NotFoundError) as exc_info:
+        await client.delete_profile("p0")
+
+    err = exc_info.value
+    assert err.resource_kind == "profile"
+    assert err.resource_id == "p0"
+
+
+async def test_delete_profile_raises_cloud_error_on_generic_exception() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.delete_profile_by_id.side_effect = Exception("timeout")
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    with pytest.raises(CloudUnreachableError):
+        await client.delete_profile("p0")
+
+
+async def test_create_profile_raises_unknown_error_when_fellow_returns_falsy() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.create_profile.return_value = None
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    with pytest.raises(UnknownError) as exc_info:
+        await client.create_profile(
+            ProfileCreate(
+                title="Test",
+                profile_type=1,
+                ratio=16.0,
+                bloom_enabled=False,
+                bloom_ratio=2.0,
+                bloom_duration=30,
+                bloom_temperature=93.0,
+                ss_pulses_enabled=False,
+                ss_pulses_number=1,
+                ss_pulses_interval=10,
+                ss_pulse_temperatures=[93.0],
+                batch_pulses_enabled=False,
+                batch_pulses_number=1,
+                batch_pulses_interval=10,
+                batch_pulse_temperatures=[93.0],
+            )
+        )
+
+    assert exc_info.value.original == "library returned False/None"

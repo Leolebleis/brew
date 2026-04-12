@@ -5,8 +5,8 @@ One file holds three classes; split only when a second implementation
 
 Ported from:
   - src/brew/aiden/profiles/facade.py (ProfileFacade)
-  - src/brew/aiden/profiles/client/fellow_client.py (FellowProfileClient)
-  - src/brew/aiden/profiles/client/fellow_client_mapper.py (FellowProfileMapper)
+  - src/brew/aiden/profiles/client.py (FellowProfileClient)
+  - src/brew/aiden/profiles/client.py (FellowProfileMapper)
 """
 
 import asyncio
