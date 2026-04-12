@@ -21,6 +21,7 @@ from brew.aiden.schedules.dependencies import get_schedule_service
 from brew.aiden.schedules.router import router as schedules_router
 from brew.aiden.schedules.service import ScheduleService
 from brew.dependencies import get_settings, require_api_key
+from brew.exception_handlers import register_exception_handlers
 from brew.health.router import router as health_router
 
 logger = logging.getLogger(__name__)
@@ -75,6 +76,8 @@ app = FastAPI(
     lifespan=lifespan,
     dependencies=[Depends(require_api_key)],
 )
+
+register_exception_handlers(app)
 
 app.include_router(health_router)
 app.include_router(device_router)
