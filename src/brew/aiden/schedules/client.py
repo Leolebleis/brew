@@ -8,12 +8,12 @@ Ported from:
 
 import asyncio
 import logging
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from fellow_aiden import FellowAiden
 from pydantic import ValidationError as PydanticValidationError
 
+from brew.aiden.datetime_parsing import parse_fellow_datetime
 from brew.aiden.schedules.model.schedule import (
     Schedule,
     ScheduleCreate,
@@ -38,28 +38,6 @@ class FellowScheduleClient(Protocol):
     async def delete_schedule(self, schedule_id: str) -> None: ...
 
 
-# ---------- Helpers ----------
-
-
-def _parse_fellow_datetime(val: str | int | None) -> datetime | None:
-    """Parse Fellow's timestamp fields.
-
-    Handles ISO-8601 strings (including 'Z' suffix, Python 3.13 native) and
-    Unix epoch integers (treated as UTC). Epoch 0 is Fellow's "never"
-    sentinel — returned as None.
-    """
-    if val is None:
-        return None
-    if isinstance(val, int):
-        return datetime.fromtimestamp(val, tz=UTC) if val > 0 else None
-    if isinstance(val, str):
-        parsed = datetime.fromisoformat(val)
-        # Epoch-0 sentinel check — Fellow sometimes encodes "never" as
-        # "1970-01-01T00:00:00.000Z".
-        return None if parsed.timestamp() == 0 else parsed
-    return None
-
-
 # ---------- Mapper ----------
 
 
@@ -73,7 +51,7 @@ class FellowScheduleHttpMapper:
             enabled=data["enabled"],
             amount_of_water=data["amountOfWater"],
             profile_id=data["profileId"],
-            user_notified_at=_parse_fellow_datetime(data.get("userNotifiedAt")),
+            user_notified_at=parse_fellow_datetime(data.get("userNotifiedAt")),
         )
 
     @staticmethod

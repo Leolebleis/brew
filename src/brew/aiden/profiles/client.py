@@ -12,12 +12,12 @@ Ported from:
 import asyncio
 import dataclasses
 import logging
-from datetime import UTC, datetime
 from typing import Any, Protocol
 
 from fellow_aiden import FellowAiden
 from pydantic import ValidationError as PydanticValidationError
 
+from brew.aiden.datetime_parsing import parse_fellow_datetime
 from brew.aiden.profiles.model.profile import (
     Profile,
     ProfileCreate,
@@ -66,18 +66,6 @@ class FellowProfileClient(Protocol):
     async def generate_link(self, profile_id: str) -> ProfileLink: ...
 
 
-def _parse_fellow_datetime(val: str | int | None) -> datetime | None:
-    """Parse Fellow's timestamp fields. Handles both ISO-8601 strings
-    (with Z suffix) and Unix epoch integers. None input → None."""
-    if val is None:
-        return None
-    if isinstance(val, int):
-        return datetime.fromtimestamp(val, tz=UTC)
-    if isinstance(val, str):
-        return datetime.fromisoformat(val)
-    return None
-
-
 # ---------- Mapper ----------
 
 
@@ -104,9 +92,9 @@ class FellowProfileHttpMapper:
             folder=data.get("folder", "Custom"),
             is_default_profile=data.get("isDefaultProfile", False),
             instant_brew=data.get("instantBrew", False),
-            created_at=_parse_fellow_datetime(data.get("createdAt")),
-            updated_at=_parse_fellow_datetime(data.get("updatedAt")),
-            last_used_time=_parse_fellow_datetime(data.get("lastUsedTime")),
+            created_at=parse_fellow_datetime(data.get("createdAt")),
+            updated_at=parse_fellow_datetime(data.get("updatedAt")),
+            last_used_time=parse_fellow_datetime(data.get("lastUsedTime")),
         )
 
     @staticmethod
