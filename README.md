@@ -16,8 +16,8 @@ Built with FastAPI, powered by the [fellow-aiden](https://github.com/9b/fellow-a
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/Leolebleis/fellow-aiden-api.git
-cd fellow-aiden-api
+git clone https://github.com/Leolebleis/brew.git
+cd brew
 cp .env.example .env
 ```
 
@@ -115,7 +115,7 @@ Add to your `.mcp.json` or Claude Code config:
 ```json
 {
   "mcpServers": {
-    "fellow-aiden": {
+    "brew": {
       "type": "http",
       "url": "https://your-host/mcp/",
       "headers": {

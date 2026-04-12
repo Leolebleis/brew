@@ -1,7 +1,7 @@
 services:
-  fellow-aiden-api:
+  brew:
     build: .
-    container_name: fellow-aiden-api
+    container_name: brew
     restart: unless-stopped
     env_file: .env
     ports:
