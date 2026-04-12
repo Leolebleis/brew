@@ -49,11 +49,20 @@ No binary `*Outcome` enums.
 ## Commands
 
 - `uv sync` — install
-- `uv run pytest -v` — test (144 tests in ~0.3s)
+- `uv run pytest -v` — test (145 tests in ~0.3s)
 - `uv run ruff check src/ tests/` — lint
 - `uv run ruff format src/ tests/` — format
 - `uv run ty check src/` — type check
 - `docker compose up -d --build` — deploy
+
+## CI
+
+GitHub Actions on push/PR to `main` (`.github/workflows/ci.yml`):
+- `lint` — `uv run ruff check src/ tests/` + `uv run ruff format --check src/ tests/`
+- `type-check` — `uv run ty check src/`
+- `test` — `uv run pytest --cov --cov-report=xml -v` (Codecov upload, `fail_ci_if_error: false`)
+
+Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 
 ## Deployment
 
@@ -62,6 +71,7 @@ No binary `*Outcome` enums.
 - Set `FELLOW_MCP_ENABLED=true` to enable the MCP server
 - Dockerfile needs `git` in builder stage (for git+ dependency) and `--no-editable` flag
 - Use `docker-compose.override.yml` for custom networking (not tracked in git)
+- `/health` bypasses the `require_api_key` guard (guard is per-router, not app-level) so Docker HEALTHCHECK works without an API-key header
 
 ## Gotchas
 
@@ -69,6 +79,11 @@ No binary `*Outcome` enums.
 - Fellow library is synchronous; infrastructure clients wrap calls with `asyncio.to_thread()`
 - FastAPI must NOT use `root_path` — breaks FastMCP's Streamable HTTP routing when mounted as a sub-app (modelcontextprotocol/python-sdk#1367)
 - Env vars: `FELLOW_FELLOW_EMAIL`, `FELLOW_FELLOW_PASSWORD`, optional `FELLOW_API_KEY`, optional `FELLOW_MCP_ENABLED=true`
+- Post-edit hook auto-runs `ruff check --fix` — don't manually re-apply fixes the hook already made
+- Local ruff cache can mask I001 import-order errors that CI catches; `uv run ruff check --no-cache src/ tests/` reproduces cleanly
+- Lifespan eagerly authenticates with Fellow; the app fails to start if creds are invalid. Tests use `httpx.ASGITransport` which does NOT run startup events, so conftest fake creds work
+- Fellow library has no typed exceptions — domain clients pattern-match `"not found" in str(e).lower()` to derive 404s. Fragile; if Fellow changes wording, `NotFoundError` silently becomes `CloudUnreachableError`
+- Fellow library silently returns `False` (not an exception) on some validation failures (e.g., bad `profile_id` to `create_schedule`) — handled in `FellowScheduleHttpClient.create_schedule` by raising `ValidationError`
 
 ## Testing
 
