@@ -1,64 +1,60 @@
 from unittest.mock import AsyncMock
 
+import pytest
+
 from brew.aiden.profiles.model.profile import ProfileCreate, ProfileLink
-from brew.aiden.profiles.service import (
-    ProfileCreateOutcome,
-    ProfileDeleteOutcome,
-    ProfileGetOutcome,
-    ProfileLinkOutcome,
-    ProfileListOutcome,
-    ProfileService,
-)
+from brew.aiden.profiles.service import ProfileService
+from brew.errors import CloudUnreachableError, NotFoundError
 from tests.aiden.profiles.conftest import SAMPLE_PROFILE
 
 
 async def test_list_profiles_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.get_profiles.return_value = [SAMPLE_PROFILE]
+    mock_client = AsyncMock()
+    mock_client.get_profiles.return_value = [SAMPLE_PROFILE]
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.list_profiles()
+    service = ProfileService(client=mock_client)
+    profiles = await service.list_profiles()
 
-    assert result.outcome == ProfileListOutcome.SUCCESS
-    assert result.profiles == [SAMPLE_PROFILE]
+    assert profiles == [SAMPLE_PROFILE]
 
 
-async def test_list_profiles_unavailable() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.get_profiles.side_effect = Exception("fail")
+async def test_list_profiles_propagates_cloud_error() -> None:
+    mock_client = AsyncMock()
+    mock_client.get_profiles.side_effect = CloudUnreachableError(
+        message="Fellow cloud unavailable", original="ConnectionError"
+    )
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.list_profiles()
-
-    assert result.outcome == ProfileListOutcome.FELLOW_UNAVAILABLE
+    service = ProfileService(client=mock_client)
+    with pytest.raises(CloudUnreachableError):
+        await service.list_profiles()
 
 
 async def test_get_profile_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.get_profile.return_value = SAMPLE_PROFILE
+    mock_client = AsyncMock()
+    mock_client.get_profile.return_value = SAMPLE_PROFILE
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.get_profile("p0")
+    service = ProfileService(client=mock_client)
+    profile = await service.get_profile("p0")
 
-    assert result.outcome == ProfileGetOutcome.SUCCESS
-    assert result.profile == SAMPLE_PROFILE
+    assert profile == SAMPLE_PROFILE
 
 
 async def test_get_profile_not_found() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.get_profile.return_value = None
+    mock_client = AsyncMock()
+    mock_client.get_profile.return_value = None
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.get_profile("p99")
+    service = ProfileService(client=mock_client)
+    with pytest.raises(NotFoundError) as exc_info:
+        await service.get_profile("p99")
 
-    assert result.outcome == ProfileGetOutcome.NOT_FOUND
+    assert exc_info.value.resource_id == "p99"
 
 
 async def test_create_profile_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.create_profile.return_value = SAMPLE_PROFILE
+    mock_client = AsyncMock()
+    mock_client.create_profile.return_value = SAMPLE_PROFILE
 
-    service = ProfileService(facade=mock_facade)
+    service = ProfileService(client=mock_client)
     create = ProfileCreate(
         title="Morning Brew",
         profile_type=1,
@@ -76,39 +72,36 @@ async def test_create_profile_success() -> None:
         batch_pulses_interval=10,
         batch_pulse_temperatures=[93.0],
     )
-    result = await service.create_profile(create)
+    profile = await service.create_profile(create)
 
-    assert result.outcome == ProfileCreateOutcome.SUCCESS
-    assert result.profile == SAMPLE_PROFILE
+    assert profile == SAMPLE_PROFILE
 
 
 async def test_create_profile_from_link_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.create_profile_from_link.return_value = SAMPLE_PROFILE
+    mock_client = AsyncMock()
+    mock_client.create_profile_from_link.return_value = SAMPLE_PROFILE
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.create_profile_from_link("https://brew.link/abc")
+    service = ProfileService(client=mock_client)
+    profile = await service.create_profile_from_link("https://brew.link/abc")
 
-    assert result.outcome == ProfileCreateOutcome.SUCCESS
-    assert result.profile == SAMPLE_PROFILE
+    assert profile == SAMPLE_PROFILE
 
 
 async def test_delete_profile_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.delete_profile.return_value = None
+    mock_client = AsyncMock()
+    mock_client.delete_profile.return_value = None
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.delete_profile("p0")
+    service = ProfileService(client=mock_client)
+    await service.delete_profile("p0")
 
-    assert result.outcome == ProfileDeleteOutcome.SUCCESS
+    mock_client.delete_profile.assert_called_once_with("p0")
 
 
 async def test_generate_link_success() -> None:
-    mock_facade = AsyncMock()
-    mock_facade.generate_link.return_value = ProfileLink(url="https://brew.link/abc")
+    mock_client = AsyncMock()
+    mock_client.generate_link.return_value = ProfileLink(url="https://brew.link/abc")
 
-    service = ProfileService(facade=mock_facade)
-    result = await service.generate_link("p0")
+    service = ProfileService(client=mock_client)
+    link = await service.generate_link("p0")
 
-    assert result.outcome == ProfileLinkOutcome.SUCCESS
-    assert result.link == ProfileLink(url="https://brew.link/abc")
+    assert link == ProfileLink(url="https://brew.link/abc")

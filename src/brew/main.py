@@ -12,7 +12,7 @@ from brew.aiden.device.client.fellow_client import FellowDeviceClient
 from brew.aiden.device.dependencies import get_device_service
 from brew.aiden.device.router import router as device_router
 from brew.aiden.device.service import DeviceService
-from brew.aiden.profiles.client.fellow_client import FellowProfileClient
+from brew.aiden.profiles.client import FellowProfileHttpClient
 from brew.aiden.profiles.dependencies import get_profile_service
 from brew.aiden.profiles.router import router as profiles_router
 from brew.aiden.profiles.service import ProfileService
@@ -35,11 +35,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     fellow = await asyncio.to_thread(FellowAiden, settings.fellow_email, password)
 
     device_client = FellowDeviceClient(fellow=fellow)
-    profile_client = FellowProfileClient(fellow=fellow)
+    profile_client = FellowProfileHttpClient(fellow=fellow)
     schedule_client = FellowScheduleClient(fellow=fellow)
 
     device_service = DeviceService(facade=device_client)
-    profile_service = ProfileService(facade=profile_client)
+    profile_service = ProfileService(client=profile_client)
     schedule_service = ScheduleService(facade=schedule_client)
 
     app.dependency_overrides[get_device_service] = lambda: device_service

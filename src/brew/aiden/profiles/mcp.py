@@ -6,20 +6,10 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from brew.aiden.profiles.model.profile import ProfileCreate, ProfileUpdate
-from brew.aiden.profiles.service import (
-    ProfileCreateOutcome,
-    ProfileDeleteOutcome,
-    ProfileGetOutcome,
-    ProfileLinkOutcome,
-    ProfileListOutcome,
-    ProfileService,
-    ProfileUpdateOutcome,
-)
-from brew.mcp_errors import FELLOW_UNAVAILABLE_MSG
+from brew.aiden.profiles.service import ProfileService
+from brew.errors import DomainError
+from brew.response_models import ErrorResponse
 
-_PROFILE_NOT_FOUND_MSG = (
-    "No profile found with ID '{profile_id}'. Use the coffee://profiles resource to see available profiles."
-)
 _MANUAL_CREATE_REQUIRED_MSG = (
     "Manual profile creation requires at least: title, profile_type, and ratio. Other fields have sensible defaults."
 )
@@ -28,19 +18,21 @@ _MANUAL_CREATE_REQUIRED_MSG = (
 def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa: C901
     @mcp.resource("coffee://profiles", description="All brew profiles with their settings.")
     async def list_profiles() -> str:
-        result = await service.list_profiles()
-        if result.outcome != ProfileListOutcome.SUCCESS or result.profiles is None:
-            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
-        return json.dumps([asdict(p) for p in result.profiles])
+        try:
+            profiles = await service.list_profiles()
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            return json.dumps({"error": body.model_dump()})
+        return json.dumps([asdict(p) for p in profiles])
 
     @mcp.resource("coffee://profiles/{profile_id}", description="A single brew profile by ID.")
     async def get_profile(profile_id: str) -> str:
-        result = await service.get_profile(profile_id)
-        if result.outcome == ProfileGetOutcome.NOT_FOUND:
-            return json.dumps({"error": _PROFILE_NOT_FOUND_MSG.format(profile_id=profile_id)})
-        if result.outcome != ProfileGetOutcome.SUCCESS or result.profile is None:
-            return json.dumps({"error": FELLOW_UNAVAILABLE_MSG})
-        return json.dumps(asdict(result.profile))
+        try:
+            profile = await service.get_profile(profile_id)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            return json.dumps({"error": body.model_dump()})
+        return json.dumps(asdict(profile))
 
     @mcp.tool(
         description=(
@@ -67,32 +59,38 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         batch_pulses_interval: int | None = None,
         batch_pulse_temperatures: list[float] | None = None,
     ) -> str:
-        if brew_link_url is not None:
-            result = await service.create_profile_from_link(brew_link_url)
-        else:
-            if title is None or profile_type is None or ratio is None:
-                raise ToolError(_MANUAL_CREATE_REQUIRED_MSG)
-            create = ProfileCreate(
-                title=title,
-                profile_type=profile_type,
-                ratio=ratio,
-                bloom_enabled=bloom_enabled if bloom_enabled is not None else False,
-                bloom_ratio=bloom_ratio if bloom_ratio is not None else 2.0,
-                bloom_duration=bloom_duration if bloom_duration is not None else 30,
-                bloom_temperature=bloom_temperature if bloom_temperature is not None else 93.0,
-                ss_pulses_enabled=ss_pulses_enabled if ss_pulses_enabled is not None else False,
-                ss_pulses_number=ss_pulses_number if ss_pulses_number is not None else 1,
-                ss_pulses_interval=ss_pulses_interval if ss_pulses_interval is not None else 10,
-                ss_pulse_temperatures=ss_pulse_temperatures if ss_pulse_temperatures is not None else [93.0],
-                batch_pulses_enabled=batch_pulses_enabled if batch_pulses_enabled is not None else False,
-                batch_pulses_number=batch_pulses_number if batch_pulses_number is not None else 1,
-                batch_pulses_interval=batch_pulses_interval if batch_pulses_interval is not None else 10,
-                batch_pulse_temperatures=batch_pulse_temperatures if batch_pulse_temperatures is not None else [93.0],
-            )
-            result = await service.create_profile(create)
-        if result.outcome != ProfileCreateOutcome.SUCCESS or result.profile is None:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
-        return json.dumps({"status": "created", "profile": asdict(result.profile)})
+        if brew_link_url is None and (title is None or profile_type is None or ratio is None):
+            raise ToolError(_MANUAL_CREATE_REQUIRED_MSG)
+        try:
+            if brew_link_url is not None:
+                profile = await service.create_profile_from_link(brew_link_url)
+            else:
+                create = ProfileCreate(
+                    title=title,  # ty: ignore[invalid-argument-type]
+                    profile_type=profile_type,  # ty: ignore[invalid-argument-type]
+                    ratio=ratio,  # ty: ignore[invalid-argument-type]
+                    bloom_enabled=bloom_enabled if bloom_enabled is not None else False,
+                    bloom_ratio=bloom_ratio if bloom_ratio is not None else 2.0,
+                    bloom_duration=bloom_duration if bloom_duration is not None else 30,
+                    bloom_temperature=bloom_temperature if bloom_temperature is not None else 93.0,
+                    ss_pulses_enabled=ss_pulses_enabled if ss_pulses_enabled is not None else False,
+                    ss_pulses_number=ss_pulses_number if ss_pulses_number is not None else 1,
+                    ss_pulses_interval=ss_pulses_interval if ss_pulses_interval is not None else 10,
+                    ss_pulse_temperatures=ss_pulse_temperatures if ss_pulse_temperatures is not None else [93.0],
+                    batch_pulses_enabled=batch_pulses_enabled if batch_pulses_enabled is not None else False,
+                    batch_pulses_number=batch_pulses_number if batch_pulses_number is not None else 1,
+                    batch_pulses_interval=batch_pulses_interval if batch_pulses_interval is not None else 10,
+                    batch_pulse_temperatures=batch_pulse_temperatures
+                    if batch_pulse_temperatures is not None
+                    else [93.0],
+                )
+                profile = await service.create_profile(create)
+        except ToolError:
+            raise
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+        return json.dumps({"status": "created", "profile": asdict(profile)})
 
     @mcp.tool(
         description="Update specific fields on an existing brew profile. Only provide the fields you want to change.",
@@ -130,9 +128,11 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
             batch_pulses_interval=batch_pulses_interval,
             batch_pulse_temperatures=batch_pulse_temperatures,
         )
-        result = await service.update_profile(profile_id, update)
-        if result.outcome != ProfileUpdateOutcome.SUCCESS:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
+        try:
+            await service.update_profile(profile_id, update)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
         return f"Profile '{profile_id}' updated successfully."
 
     @mcp.tool(
@@ -140,9 +140,11 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         annotations=ToolAnnotations(destructiveHint=True),
     )
     async def delete_profile(profile_id: str) -> str:
-        result = await service.delete_profile(profile_id)
-        if result.outcome != ProfileDeleteOutcome.SUCCESS:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
+        try:
+            await service.delete_profile(profile_id)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
         return f"Profile '{profile_id}' deleted."
 
     @mcp.tool(
@@ -150,7 +152,9 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         annotations=ToolAnnotations(readOnlyHint=True),
     )
     async def generate_profile_link(profile_id: str) -> str:
-        result = await service.generate_link(profile_id)
-        if result.outcome != ProfileLinkOutcome.SUCCESS or result.link is None:
-            raise ToolError(FELLOW_UNAVAILABLE_MSG)
-        return json.dumps({"profile_id": profile_id, "share_url": result.link.url})
+        try:
+            link = await service.generate_link(profile_id)
+        except DomainError as e:
+            body = ErrorResponse.from_domain_error(e)
+            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+        return json.dumps({"profile_id": profile_id, "share_url": link.url})
