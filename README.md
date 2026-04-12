@@ -58,11 +58,11 @@ uv run uvicorn brew.main:app --port 8000
 
 | Path | Description |
 |---|---|
-| `GET /aiden/device` | Device info and settings |
-| `GET /aiden/profiles` | All brew profiles |
-| `POST /aiden/profiles` | Create a profile |
-| `GET /aiden/schedules` | All schedules |
-| `POST /aiden/schedules` | Create a schedule |
+| `GET /device` | Device info and settings |
+| `GET /profiles` | All brew profiles |
+| `POST /profiles` | Create a profile |
+| `GET /schedules` | All schedules |
+| `POST /schedules` | Create a schedule |
 | `GET /mcp/` | MCP server (when enabled) |
 | `GET /health` | Health check |
 
