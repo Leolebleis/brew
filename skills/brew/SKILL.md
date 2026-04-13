@@ -154,14 +154,16 @@ Only when the user confirms. Semantics:
 - `water_ml` = target volume.
 - `profile_id` = the profile you just created.
 
-**Duration floors** (from the brew CLAUDE.md): single-serve ≥ 4 min, batch ≥ 7 min. If READY-time is too close, the device silently skips the schedule.
+**Duration floors** (empirical, 2026-04-13): single-serve ≥ **6 min**, batch ≥ **8 min**. The Aiden spends ~2 min pre-heating water before bloom starts — the CLAUDE.md "4 min / 7 min" figures are extraction-only estimates and undercount the full end-to-end cycle. If READY-time is too close to now, the device silently skips the schedule.
 
 ### Estimation formula
 
 ```
-ss_duration    = max(240, bloom_duration + ss_pulses_number    * ss_pulses_interval    + 60)
-batch_duration = max(420, bloom_duration + batch_pulses_number * batch_pulses_interval + 120)
+ss_duration    = max(360, bloom_duration + ss_pulses_number    * ss_pulses_interval    + 180)
+batch_duration = max(480, bloom_duration + batch_pulses_number * batch_pulses_interval + 240)
 ```
+
+The 180 s / 240 s tail covers pre-heat + per-pulse pour time + drawdown. Floors (360 / 480) are the observed minimums even when the maths comes in lower.
 
 Then: `ready_local_seconds = (now_in_device_tz_seconds + duration + 60) rounded up to next whole minute`.
 
