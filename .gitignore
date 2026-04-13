@@ -10,4 +10,5 @@ htmlcov/
 .ruff_cache/
 .worktrees/
 docs/superpowers/
+.superpowers/
 docker-compose.override.yml
