@@ -101,10 +101,11 @@ Read `coffee://device` and check these fields:
 | Water not flagged missing | `missingWater` (true = problem) |
 | Device-local tz (for scheduling) | `deviceTimezone` |
 
-Always include these two **manual** items — the API can't verify them:
+Always include these three **manual** items — the API can't verify them:
 
 - `⚠️  Nozzle → <single-serve|batch> position`
 - `⚠️  Reservoir ≥ <volume + 100 ml> filled`
+- `⚠️  Wet the paper filter (rinses papery taste + preheats the basket)`
 
 ## Brew plan template
 
@@ -127,6 +128,7 @@ Pre-brew checklist
   ✅/❌ Carafe present           (via MCP)
   ⚠️  Nozzle → <mode> position   (manual)
   ⚠️  Reservoir ≥ <vol+100> ml filled  (manual)
+  ⚠️  Wet the paper filter       (manual — rinses paper + preheats basket)
 
 Profile: "<TITLE>" (id: <ID>) — synced to Fellow cloud.
 Say `brew now` when ready.
