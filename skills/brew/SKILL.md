@@ -26,11 +26,12 @@ Ask for anything missing — don't guess origin or roast.
 
 1. **Identify** bean + volume.
 2. **Pick mode**: `volume ≤ 500 ml → single-serve`, `> 500 ml → batch`. **Hard cutoff at 500 ml.**
-3. **Compute profile params** from the heuristic table (below).
-4. **Read device state** via `coffee://device` MCP resource.
-5. **Create profile** via `mcp__brew__create_profile`.
-6. **Render the brew plan** (see template).
-7. **Optional brew_now**: if user confirms, create a one-time schedule.
+3. **Pick a template drop** from `coffee://profiles` using the decision tree in `references/profile-heuristics.md`. Clone its params.
+4. **Apply roast-delta nudge** if the bean is lighter/darker than the template.
+5. **Read device state** via `coffee://device`.
+6. **Create profile** via `mcp__brew__create_profile` (new title, cloned params).
+7. **Render the brew plan**.
+8. **Optional brew_now**: if user confirms, create a one-time schedule.
 
 ## Non-negotiable MCP values
 
@@ -46,17 +47,35 @@ These are the traps a fresh agent falls into. Always use these.
 | `ss_pulse_temperatures` / `batch_pulse_temperatures` | list of °C floats, length == corresponding `*_pulses_number` | e.g. `ss_pulses_number=3` → `ss_pulse_temperatures=[93.0, 93.0, 93.0]`. |
 | `ss_pulses_interval` / `batch_pulses_interval` | seconds, 5–60 | Use `23` for ss, `30` for batch (matches existing "drops" profiles). |
 
-## Profile heuristic (default by roast)
+## Profile heuristic — template by drop
 
-See `references/profile-heuristics.md` for the full table. Starting defaults:
+Fellow's `Fellow/` folder has three roast baselines (`plocal0-2`) and the `drops/` folder has ~10 curated real-world recipes from named roasters. Always clone one of these as the starting point rather than inventing params from scratch.
 
-| Roast | `ratio` | `bloom_duration` | `bloom_ratio` | `bloom_temperature` | pulse temp | `ss_pulses_number` | `batch_pulses_number` |
-|---|---|---|---|---|---|---|---|
-| Light | 17.0 | 45 | 3.0 | 95 | 95 | 3 | 4 |
-| Medium | 16.5 | 45 | 2.0 | 93 | 93 | 3 | 3 |
-| Dark | 16.0 | 30 | 2.0 | 91 | 90 | 3 | 3 |
+**Full decision tree + template table:** `references/profile-heuristics.md`.
 
-Pulse temperatures are flat arrays (e.g. `[93, 93, 93]`) — one entry per pulse. `ss_pulses_interval=23`, `batch_pulses_interval=30`.
+Quick overview:
+
+| Bean profile | Template |
+|---|---|
+| Processing = fermented / anaerobic / natural-with-funk | `d103` Black & White (light funk) or `d102` Brandywine (deep funk) |
+| Origin = East African washed (Kenya, Ethiopia w.) | `d24` Regalia, Kenya Gitare AB |
+| Origin = Latin America, light-medium | `d67` Broadsheet, Jorge Rojas La Roca |
+| Origin = Latin America, standard medium (Peru, Mexico) | `d105` Olympia / `d108` Paloma |
+| Origin = Brazil (chocolatey, natural) | `d110` Square Mile, Sitio da Torre |
+| Origin = Indonesia / earthy / low-acid | `d106` Andytown, Indonesia Mt Ijen |
+| Dark blend or espresso-leaning roast | `d111` Square Mile, Red Brick / `d112` K Brew Scruffy City |
+| Unknown origin, standard roast | `plocal0` (light) / `plocal1` (medium) / `plocal2` (dark) |
+
+Fetch the template at invocation time via `coffee://profiles` — don't hardcode its params here; IDs can change.
+
+**Roast-delta adjust** vs the template:
+
+| Delta | Nudge |
+|---|---|
+| Bean lighter than template | `ratio +0.5`, `bloom_temperature +0.5 °C` |
+| Bean darker than template | `ratio -0.5`, each pulse temperature `-1 to -2 °C` |
+
+Pulse arrays from the template stay the same length (keeps the flat vs descending idiom intact).
 
 ## Ode Gen 1 grind
 
@@ -205,3 +224,4 @@ These are planned for v2 in a `journal` bounded context inside `brew/src/brew/jo
 - About to schedule with `time_seconds` < current device-local seconds + duration → **stop**, the device will silently skip it.
 - Guessing origin or roast from a bag → **stop**, ask the user.
 - Using a 300 ml single/batch cutoff → **stop**, cutoff is **500 ml**.
+- Inventing pulse temps / ratios from nothing → **stop**, clone a Fellow drop via `coffee://profiles` first.
