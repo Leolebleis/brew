@@ -94,3 +94,59 @@ async def test_list_respects_limit(repo: JournalSqliteRepository) -> None:
     entries = await repo.list(limit=3)
 
     assert len(entries) == 3
+
+
+async def test_update_sets_rating(repo: JournalSqliteRepository) -> None:
+    created = await repo.create(make_entry_create())
+
+    ok = await repo.update(created.id, rating=4, note_text=None)
+    assert ok is True
+
+    updated = await repo.get(created.id)
+    assert updated is not None
+    assert updated.rating == 4
+    assert updated.note_text is None
+
+
+async def test_update_sets_note_text(repo: JournalSqliteRepository) -> None:
+    created = await repo.create(make_entry_create())
+
+    await repo.update(created.id, rating=None, note_text="Caramel and orange peel")
+
+    updated = await repo.get(created.id)
+    assert updated is not None
+    assert updated.note_text == "Caramel and orange peel"
+    assert updated.rating is None
+
+
+async def test_update_sets_both_fields(repo: JournalSqliteRepository) -> None:
+    created = await repo.create(make_entry_create())
+
+    await repo.update(created.id, rating=5, note_text="Top tier")
+
+    updated = await repo.get(created.id)
+    assert updated is not None
+    assert updated.rating == 5
+    assert updated.note_text == "Top tier"
+
+
+async def test_update_both_none_is_noop_but_still_reports_found(
+    repo: JournalSqliteRepository,
+) -> None:
+    created = await repo.create(make_entry_create())
+    ok = await repo.update(created.id, rating=None, note_text=None)
+    assert ok is True
+
+
+async def test_update_missing_entry_returns_false(repo: JournalSqliteRepository) -> None:
+    assert await repo.update("does-not-exist", rating=5, note_text=None) is False
+
+
+async def test_delete_removes_entry(repo: JournalSqliteRepository) -> None:
+    created = await repo.create(make_entry_create())
+    await repo.delete(created.id)
+    assert await repo.get(created.id) is None
+
+
+async def test_delete_missing_returns_false(repo: JournalSqliteRepository) -> None:
+    assert await repo.delete("does-not-exist") is False

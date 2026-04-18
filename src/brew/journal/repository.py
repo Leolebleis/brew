@@ -22,6 +22,8 @@ class JournalRepository(Protocol):
         rating_min: int | None = None,
         limit: int = 100,
     ) -> list[JournalEntry]: ...
+    async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> bool: ...
+    async def delete(self, entry_id: str) -> bool: ...
 
 
 def _now_iso() -> str:
@@ -123,3 +125,27 @@ class JournalSqliteRepository:
         cursor = await self._conn.execute(sql, tuple(params))
         rows = await cursor.fetchall()
         return [_row_to_entry(row) for row in rows]
+
+    async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> bool:
+        sets: list[str] = []
+        params: list[object] = []
+        if rating is not None:
+            sets.append("rating = ?")
+            params.append(rating)
+        if note_text is not None:
+            sets.append("note_text = ?")
+            params.append(note_text)
+
+        if not sets:
+            return await self.get(entry_id) is not None
+
+        sql = f"UPDATE journal_entries SET {', '.join(sets)} WHERE id = ?"  # noqa: S608
+        params.append(entry_id)
+        cursor = await self._conn.execute(sql, tuple(params))
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def delete(self, entry_id: str) -> bool:
+        cursor = await self._conn.execute("DELETE FROM journal_entries WHERE id = ?", (entry_id,))
+        await self._conn.commit()
+        return cursor.rowcount > 0
