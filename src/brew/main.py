@@ -20,6 +20,7 @@ from brew.aiden.schedules.client import FellowScheduleHttpClient
 from brew.aiden.schedules.dependencies import get_schedule_service
 from brew.aiden.schedules.router import router as schedules_router
 from brew.aiden.schedules.service import ScheduleService
+from brew.bags.router import router as bags_router
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.exception_handlers import register_exception_handlers
@@ -100,6 +101,7 @@ app.include_router(device_router, dependencies=[Depends(require_api_key)])
 app.include_router(profiles_router, dependencies=[Depends(require_api_key)])
 app.include_router(schedules_router, dependencies=[Depends(require_api_key)])
 app.include_router(water_router, dependencies=[Depends(require_api_key)])
+app.include_router(bags_router, dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
