@@ -16,3 +16,5 @@ class Settings(BaseSettings):
     port: int = 8000
 
     mcp_enabled: bool = False
+
+    database_path: str = ":memory:"
