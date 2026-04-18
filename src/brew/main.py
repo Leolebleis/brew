@@ -23,6 +23,7 @@ from brew.aiden.schedules.service import ScheduleService
 from brew.dependencies import get_settings, require_api_key
 from brew.exception_handlers import register_exception_handlers
 from brew.health.router import router as health_router
+from brew.water.router import router as water_router
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +85,7 @@ app.include_router(health_router)
 app.include_router(device_router, dependencies=[Depends(require_api_key)])
 app.include_router(profiles_router, dependencies=[Depends(require_api_key)])
 app.include_router(schedules_router, dependencies=[Depends(require_api_key)])
+app.include_router(water_router, dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
