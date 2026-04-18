@@ -128,3 +128,64 @@ async def test_delete_removes_bag(repo: BagSqliteRepository) -> None:
 
 async def test_delete_missing_returns_false(repo: BagSqliteRepository) -> None:
     assert await repo.delete("does-not-exist") is False
+
+
+async def test_activate_sets_is_active(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create())
+
+    ok = await repo.activate(created.id)
+    assert ok is True
+
+    active = await repo.get_active()
+    assert active is not None
+    assert active.id == created.id
+
+
+async def test_activate_deactivates_previous_active(repo: BagSqliteRepository) -> None:
+    first = await repo.create(make_bag_create(name="First"))
+    second = await repo.create(make_bag_create(name="Second"))
+
+    await repo.activate(first.id)
+    await repo.activate(second.id)
+
+    active = await repo.get_active()
+    assert active is not None
+    assert active.id == second.id
+
+    first_reloaded = await repo.get(first.id)
+    assert first_reloaded is not None
+    assert first_reloaded.is_active is False
+
+
+async def test_activate_missing_returns_false(repo: BagSqliteRepository) -> None:
+    assert await repo.activate("does-not-exist") is False
+
+
+async def test_zero_sets_remaining_to_zero_and_finishes(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(initial_grams=250))
+    await repo.activate(created.id)
+
+    ok = await repo.zero(created.id)
+    assert ok is True
+
+    zeroed = await repo.get(created.id)
+    assert zeroed is not None
+    assert zeroed.remaining_grams == 0
+    assert zeroed.is_active is False
+    assert zeroed.finished_at is not None
+
+
+async def test_zero_missing_returns_false(repo: BagSqliteRepository) -> None:
+    assert await repo.zero("does-not-exist") is False
+
+
+async def test_set_remaining_grams_clamps_below_zero(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(initial_grams=250))
+    await repo.set_remaining_grams(created.id, -50)
+    updated = await repo.get(created.id)
+    assert updated is not None
+    assert updated.remaining_grams == 0
+
+
+async def test_set_remaining_grams_missing_returns_false(repo: BagSqliteRepository) -> None:
+    assert await repo.set_remaining_grams("does-not-exist", 100) is False

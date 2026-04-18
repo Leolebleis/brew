@@ -24,6 +24,9 @@ class BagRepository(Protocol):
     ) -> list[Bag]: ...
     async def update(self, bag_id: str, update: BagUpdate) -> bool: ...
     async def delete(self, bag_id: str) -> bool: ...
+    async def activate(self, bag_id: str) -> bool: ...
+    async def zero(self, bag_id: str) -> bool: ...
+    async def set_remaining_grams(self, bag_id: str, grams: int) -> bool: ...
 
 
 def _now_iso() -> str:
@@ -171,5 +174,37 @@ class BagSqliteRepository:
 
     async def delete(self, bag_id: str) -> bool:
         cursor = await self._conn.execute("DELETE FROM bags WHERE id = ?", (bag_id,))
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def activate(self, bag_id: str) -> bool:
+        exists_cursor = await self._conn.execute("SELECT 1 FROM bags WHERE id = ?", (bag_id,))
+        if await exists_cursor.fetchone() is None:
+            return False
+
+        await self._conn.execute("UPDATE bags SET is_active = 0 WHERE is_active = 1")
+        await self._conn.execute("UPDATE bags SET is_active = 1 WHERE id = ?", (bag_id,))
+        await self._conn.commit()
+        return True
+
+    async def zero(self, bag_id: str) -> bool:
+        now = _now_iso()
+        cursor = await self._conn.execute(
+            """
+            UPDATE bags
+            SET remaining_grams = 0, is_active = 0, finished_at = ?
+            WHERE id = ?
+            """,
+            (now, bag_id),
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def set_remaining_grams(self, bag_id: str, grams: int) -> bool:
+        clamped = max(0, grams)
+        cursor = await self._conn.execute(
+            "UPDATE bags SET remaining_grams = ? WHERE id = ?",
+            (clamped, bag_id),
+        )
         await self._conn.commit()
         return cursor.rowcount > 0
