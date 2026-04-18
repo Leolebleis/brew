@@ -57,3 +57,48 @@ async def test_coffee_bags_active_returns_null_when_none(mcp: FastMCP, mock_serv
     data = json.loads(result.contents[0].content)
 
     assert data is None
+
+
+async def test_create_bag_tool_creates_and_returns_bag(mcp: FastMCP, mock_service: AsyncMock) -> None:
+    mock_service.create.return_value = make_bag(id="b1", name="Daybreak")
+
+    result = await mcp.call_tool(
+        "create_bag",
+        {
+            "name": "Daybreak",
+            "origin": "Ethiopia",
+            "roaster": "Intermission",
+            "roast_level": "light",
+            "initial_grams": 250,
+            "profile_snapshot": {"ratio": 60.0},
+            "profile_id": "p1",
+        },
+    )
+
+    data = json.loads(result.content[0].text)
+    assert data["status"] == "created"
+    assert data["bag"]["id"] == "b1"
+    assert data["bag"]["name"] == "Daybreak"
+    mock_service.create.assert_awaited_once()
+
+
+async def test_create_bag_tool_accepts_optional_roast_date(mcp: FastMCP, mock_service: AsyncMock) -> None:
+    mock_service.create.return_value = make_bag(id="b1")
+
+    result = await mcp.call_tool(
+        "create_bag",
+        {
+            "name": "Daybreak",
+            "origin": "Ethiopia",
+            "roaster": "Intermission",
+            "roast_level": "light",
+            "initial_grams": 250,
+            "profile_snapshot": {"ratio": 60.0},
+            "roast_date": "2026-04-10",
+        },
+    )
+
+    data = json.loads(result.content[0].text)
+    assert data["status"] == "created"
+    create_call = mock_service.create.await_args.args[0]
+    assert create_call.roast_date.isoformat() == "2026-04-10"
