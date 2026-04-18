@@ -12,6 +12,7 @@ from brew.main import app
 def _set_test_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("FELLOW_FELLOW_EMAIL", "test@example.com")
     monkeypatch.setenv("FELLOW_FELLOW_PASSWORD", "test-password")
+    monkeypatch.setenv("FELLOW_DATABASE_PATH", ":memory:")
     get_settings.cache_clear()
     get_aiden_settings.cache_clear()
 
