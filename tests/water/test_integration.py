@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import pytest
@@ -7,29 +8,30 @@ from brew.water.repository import WaterSqliteRepository
 from brew.water.schema import WATER_SCHEMA
 
 
+@asynccontextmanager
+async def _connect_and_init(path: str):
+    conn = await open_db(path)
+    try:
+        await init_db(conn, [WATER_SCHEMA])
+        yield conn
+    finally:
+        await conn.close()
+
+
 @pytest.fixture
 async def file_repo(tmp_path: Path):
-    db_path = tmp_path / "brew.db"
-    conn = await open_db(str(db_path))
-    await init_db(conn, [WATER_SCHEMA])
-    yield WaterSqliteRepository(conn=conn)
-    await conn.close()
+    async with _connect_and_init(str(tmp_path / "brew.db")) as conn:
+        yield WaterSqliteRepository(conn=conn)
 
 
 async def test_state_persists_across_connections(tmp_path: Path) -> None:
-    db_path = tmp_path / "brew.db"
+    db_path = str(tmp_path / "brew.db")
 
-    conn1 = await open_db(str(db_path))
-    await init_db(conn1, [WATER_SCHEMA])
-    repo1 = WaterSqliteRepository(conn=conn1)
-    await repo1.set_remaining_ml(777)
-    await conn1.close()
+    async with _connect_and_init(db_path) as conn:
+        await WaterSqliteRepository(conn=conn).set_remaining_ml(777)
 
-    conn2 = await open_db(str(db_path))
-    await init_db(conn2, [WATER_SCHEMA])  # idempotent — CREATE IF NOT EXISTS + INSERT OR IGNORE
-    repo2 = WaterSqliteRepository(conn=conn2)
-    water = await repo2.get()
-    await conn2.close()
+    async with _connect_and_init(db_path) as conn:
+        water = await WaterSqliteRepository(conn=conn).get()
 
     assert water.remaining_ml == 777
 
