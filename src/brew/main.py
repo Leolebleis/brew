@@ -20,7 +20,11 @@ from brew.aiden.schedules.client import FellowScheduleHttpClient
 from brew.aiden.schedules.dependencies import get_schedule_service
 from brew.aiden.schedules.router import router as schedules_router
 from brew.aiden.schedules.service import ScheduleService
+from brew.bags.dependencies import get_bag_service
+from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
+from brew.bags.schema import BAGS_SCHEMA
+from brew.bags.service import BagService
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.exception_handlers import register_exception_handlers
@@ -49,24 +53,28 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     schedule_service = ScheduleService(client=schedule_client)
 
     db_conn = await open_db(settings.database_path)
-    await init_db(db_conn, [WATER_SCHEMA])
+    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA])
     water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn))
+    bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
 
     app.dependency_overrides[get_device_service] = lambda: device_service
     app.dependency_overrides[get_profile_service] = lambda: profile_service
     app.dependency_overrides[get_schedule_service] = lambda: schedule_service
     app.dependency_overrides[get_water_service] = lambda: water_service
+    app.dependency_overrides[get_bag_service] = lambda: bag_service
 
     if _mcp_enabled:
         from brew.aiden.device.mcp import register_device_mcp  # noqa: PLC0415
         from brew.aiden.profiles.mcp import register_profile_mcp  # noqa: PLC0415
         from brew.aiden.schedules.mcp import register_schedule_mcp  # noqa: PLC0415
+        from brew.bags.mcp import register_bags_mcp  # noqa: PLC0415
         from brew.water.mcp import register_water_mcp  # noqa: PLC0415
 
         register_device_mcp(_mcp_server, device_service)
         register_profile_mcp(_mcp_server, profile_service)
         register_schedule_mcp(_mcp_server, schedule_service)
         register_water_mcp(_mcp_server, water_service)
+        register_bags_mcp(_mcp_server, bag_service)
 
     try:
         yield
