@@ -1,7 +1,6 @@
 from datetime import UTC, datetime
 
 from brew.water.mapper import WaterMapper
-
 from brew.water.model.water import Water
 
 

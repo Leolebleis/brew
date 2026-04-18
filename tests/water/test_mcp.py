@@ -2,9 +2,9 @@ import json
 from unittest.mock import AsyncMock
 
 import pytest
-from brew.water.mcp import register_water_mcp
 from fastmcp import FastMCP
 
+from brew.water.mcp import register_water_mcp
 from tests.water.conftest import make_water
 
 

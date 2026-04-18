@@ -1,8 +1,8 @@
 import pytest
-from brew.water.repository import WaterSqliteRepository
-from brew.water.schema import WATER_SCHEMA
 
 from brew.db import init_db, open_db
+from brew.water.repository import WaterSqliteRepository
+from brew.water.schema import WATER_SCHEMA
 
 
 @pytest.fixture
