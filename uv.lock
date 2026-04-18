@@ -106,6 +106,7 @@ dependencies = [
     { name = "fellow-aiden" },
     { name = "httpx" },
     { name = "pydantic-settings" },
+    { name = "sse-starlette" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
@@ -131,6 +132,7 @@ requires-dist = [
     { name = "fellow-aiden", git = "https://github.com/9b/fellow-aiden.git" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "pydantic-settings", specifier = ">=2.7" },
+    { name = "sse-starlette", specifier = ">=3.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
 

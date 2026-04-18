@@ -12,6 +12,7 @@ dependencies = [
     "fastmcp>=2",
     "httpx>=0.28",
     "aiosqlite>=0.20",
+    "sse-starlette>=3.3",
 ]
 
 [dependency-groups]
