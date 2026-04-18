@@ -2,6 +2,7 @@ from datetime import date
 
 import pytest
 
+from brew.bags.model.bag import BagUpdate
 from brew.bags.repository import BagSqliteRepository
 from brew.bags.schema import BAGS_SCHEMA
 from brew.db import init_db, open_db
@@ -76,3 +77,54 @@ async def test_create_persists_roast_date_as_date(repo: BagSqliteRepository) -> 
     fetched = await repo.get(created.id)
     assert fetched is not None
     assert fetched.roast_date == date(2026, 3, 15)
+
+
+async def test_update_changes_fields(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(name="Daybreak"))
+
+    await repo.update(created.id, BagUpdate(name="Nightfall", roast_level="dark"))
+    updated = await repo.get(created.id)
+
+    assert updated is not None
+    assert updated.name == "Nightfall"
+    assert updated.roast_level == "dark"
+    assert updated.origin == "Ethiopia, Yirgacheffe"  # unchanged
+
+
+async def test_update_preserves_profile_snapshot_when_not_provided(
+    repo: BagSqliteRepository,
+) -> None:
+    created = await repo.create(make_bag_create(profile_snapshot={"ratio": 60.0}))
+
+    await repo.update(created.id, BagUpdate(name="Renamed"))
+    updated = await repo.get(created.id)
+
+    assert updated is not None
+    assert updated.profile_snapshot == {"ratio": 60.0}
+
+
+async def test_update_replaces_profile_snapshot_when_provided(
+    repo: BagSqliteRepository,
+) -> None:
+    created = await repo.create(make_bag_create(profile_snapshot={"ratio": 60.0}))
+
+    await repo.update(created.id, BagUpdate(profile_snapshot={"ratio": 55.0, "bloom": 30}))
+    updated = await repo.get(created.id)
+
+    assert updated is not None
+    assert updated.profile_snapshot == {"ratio": 55.0, "bloom": 30}
+
+
+async def test_update_missing_bag_returns_false(repo: BagSqliteRepository) -> None:
+    result = await repo.update("does-not-exist", BagUpdate(name="X"))
+    assert result is False
+
+
+async def test_delete_removes_bag(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create())
+    await repo.delete(created.id)
+    assert await repo.get(created.id) is None
+
+
+async def test_delete_missing_returns_false(repo: BagSqliteRepository) -> None:
+    assert await repo.delete("does-not-exist") is False

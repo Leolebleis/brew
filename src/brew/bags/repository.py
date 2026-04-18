@@ -7,7 +7,7 @@ from typing import Protocol
 
 import aiosqlite
 
-from brew.bags.model.bag import Bag, BagCreate
+from brew.bags.model.bag import Bag, BagCreate, BagUpdate
 
 
 class BagRepository(Protocol):
@@ -22,6 +22,8 @@ class BagRepository(Protocol):
         roaster: str | None = None,
         origin: str | None = None,
     ) -> list[Bag]: ...
+    async def update(self, bag_id: str, update: BagUpdate) -> bool: ...
+    async def delete(self, bag_id: str) -> bool: ...
 
 
 def _now_iso() -> str:
@@ -132,3 +134,42 @@ class BagSqliteRepository:
         cursor = await self._conn.execute(sql, tuple(params))
         rows = await cursor.fetchall()
         return [_row_to_bag(row) for row in rows]
+
+    async def update(self, bag_id: str, update: BagUpdate) -> bool:
+        sets: list[str] = []
+        params: list[object] = []
+        if update.name is not None:
+            sets.append("name = ?")
+            params.append(update.name)
+        if update.origin is not None:
+            sets.append("origin = ?")
+            params.append(update.origin)
+        if update.roaster is not None:
+            sets.append("roaster = ?")
+            params.append(update.roaster)
+        if update.roast_date is not None:
+            sets.append("roast_date = ?")
+            params.append(update.roast_date.isoformat())
+        if update.roast_level is not None:
+            sets.append("roast_level = ?")
+            params.append(update.roast_level)
+        if update.profile_id is not None:
+            sets.append("profile_id = ?")
+            params.append(update.profile_id)
+        if update.profile_snapshot is not None:
+            sets.append("profile_snapshot = ?")
+            params.append(json.dumps(update.profile_snapshot))
+
+        if not sets:
+            return await self.get(bag_id) is not None
+
+        sql = f"UPDATE bags SET {', '.join(sets)} WHERE id = ?"  # noqa: S608 — no user input in sets
+        params.append(bag_id)
+        cursor = await self._conn.execute(sql, tuple(params))
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def delete(self, bag_id: str) -> bool:
+        cursor = await self._conn.execute("DELETE FROM bags WHERE id = ?", (bag_id,))
+        await self._conn.commit()
+        return cursor.rowcount > 0
