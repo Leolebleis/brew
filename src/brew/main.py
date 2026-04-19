@@ -67,11 +67,12 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
     water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn))
     bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
-    journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn))
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
     bus.subscribe(BrewCompleted, broadcaster.broadcast)
+
+    journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
 
     poller = DeviceBrewingPoller(device_service=device_service, bus=bus)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
