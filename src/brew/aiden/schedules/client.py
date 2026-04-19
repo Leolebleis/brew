@@ -1,10 +1,4 @@
-"""Fellow schedules client — protocol, HTTP implementation, mapper.
-
-Ported from:
-  - src/brew/aiden/schedules/facade.py (ScheduleFacade)
-  - src/brew/aiden/schedules/client/fellow_client.py (FellowScheduleClient)
-  - src/brew/aiden/schedules/client/fellow_client_mapper.py (FellowScheduleMapper)
-"""
+"""Fellow schedules client — protocol, HTTP implementation, mapper."""
 
 import asyncio
 import logging
