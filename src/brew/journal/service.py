@@ -8,6 +8,8 @@ from brew.events.domain import JournalEntryCreated
 from brew.journal.model.entry import JournalEntry, JournalEntryCreate
 from brew.journal.repository import JournalRepository
 
+_KIND = "journal_entry"
+
 
 class JournalService:
     def __init__(self, repo: JournalRepository, bus: EventBus) -> None:
@@ -33,11 +35,7 @@ class JournalService:
     async def get(self, entry_id: str) -> JournalEntry:
         entry = await self._repo.get(entry_id)
         if entry is None:
-            raise NotFoundError(
-                message=f"Journal entry {entry_id} not found",
-                resource_kind="journal_entry",
-                resource_id=entry_id,
-            )
+            raise NotFoundError.for_resource(_KIND, entry_id)
         return entry
 
     async def list(
@@ -58,19 +56,9 @@ class JournalService:
         )
 
     async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> None:
-        ok = await self._repo.update(entry_id, rating=rating, note_text=note_text)
-        if not ok:
-            raise NotFoundError(
-                message=f"Journal entry {entry_id} not found",
-                resource_kind="journal_entry",
-                resource_id=entry_id,
-            )
+        if not await self._repo.update(entry_id, rating=rating, note_text=note_text):
+            raise NotFoundError.for_resource(_KIND, entry_id)
 
     async def delete(self, entry_id: str) -> None:
-        ok = await self._repo.delete(entry_id)
-        if not ok:
-            raise NotFoundError(
-                message=f"Journal entry {entry_id} not found",
-                resource_kind="journal_entry",
-                resource_id=entry_id,
-            )
+        if not await self._repo.delete(entry_id):
+            raise NotFoundError.for_resource(_KIND, entry_id)

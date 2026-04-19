@@ -9,6 +9,8 @@ from brew.aiden.profiles.model.profile import (
 )
 from brew.errors import NotFoundError
 
+_KIND = "profile"
+
 
 class ProfileService:
     def __init__(self, client: FellowProfileClient) -> None:
@@ -20,11 +22,7 @@ class ProfileService:
     async def get_profile(self, profile_id: str) -> Profile:
         profile = await self._client.get_profile(profile_id)
         if profile is None:
-            raise NotFoundError(
-                message=f"Profile {profile_id} not found",
-                resource_kind="profile",
-                resource_id=profile_id,
-            )
+            raise NotFoundError.for_resource(_KIND, profile_id)
         return profile
 
     async def create_profile(self, create: ProfileCreate) -> Profile:
