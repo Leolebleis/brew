@@ -71,7 +71,6 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
-    bus.subscribe(BrewCompleted, broadcaster.broadcast)
     bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
 
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)

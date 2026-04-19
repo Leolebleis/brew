@@ -12,7 +12,6 @@ from httpx import AsyncClient
 
 from brew.bags.dependencies import get_bag_service
 from brew.events.bus import EventBus
-from brew.events.domain import JournalEntryCreated
 from brew.journal.dependencies import get_journal_service
 from brew.journal.model.entry import JournalEntryCreate
 from brew.journal.service import JournalService
@@ -181,35 +180,4 @@ async def test_create_overrides_fill_in(
     assert response.status_code == 201
     call_arg = mock_repo.create.await_args.args[0]
     assert call_arg.water_ml == 500
-    # dose_grams computed from ratio: int(500 / 15.5) == 32
     assert call_arg.dose_grams == 32
-
-
-async def test_create_publishes_event(
-    client: AsyncClient,
-    mock_bag_service: AsyncMock,
-    mock_repo: AsyncMock,
-    bus: EventBus,
-) -> None:
-    mock_bag_service.get_active.return_value = None
-    mock_repo.create.return_value = make_entry(
-        id="e-evt",
-        bag_id=None,
-        profile_id=None,
-        profile_snapshot_at_brew={},
-        water_ml=0,
-        dose_grams=0,
-    )
-
-    received: list[JournalEntryCreated] = []
-
-    async def handler(event: JournalEntryCreated) -> None:
-        received.append(event)
-
-    bus.subscribe(JournalEntryCreated, handler)
-
-    response = await client.post("/journal", json={})
-
-    assert response.status_code == 201
-    assert len(received) == 1
-    assert received[0].entry_id == "e-evt"

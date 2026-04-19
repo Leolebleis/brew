@@ -8,6 +8,7 @@ from collections.abc import Awaitable, Callable
 
 from brew.bags.service import BagService
 from brew.events.domain import BrewCompleted
+from brew.journal.defaults import derive_brew_metrics
 from brew.journal.model.entry import JournalEntryCreate
 from brew.journal.service import JournalService
 
@@ -20,9 +21,7 @@ def make_journal_auto_log_handler(
         bag = await bag_service.get_active()
         matches = bag is not None and bag.profile_id == event.profile_id
         snapshot = bag.profile_snapshot if (bag and matches) else {}
-        water_ml = int(snapshot.get("target_volume") or 0)
-        ratio = snapshot.get("ratio")
-        dose_grams = int(water_ml / ratio) if (ratio and water_ml) else 0
+        water_ml, dose_grams = derive_brew_metrics(snapshot)
 
         await journal_service.create(
             JournalEntryCreate(

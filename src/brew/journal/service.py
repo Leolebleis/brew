@@ -15,11 +15,7 @@ class JournalService:
         self._bus = bus
 
     async def create(self, create: JournalEntryCreate) -> JournalEntry:
-        """Insert a journal entry and publish JournalEntryCreated.
-
-        Called by both the BrewCompleted auto-log subscriber and the POST /journal
-        route. Publishing is a side effect so every insertion path stays consistent.
-        """
+        """Insert a journal entry and publish JournalEntryCreated."""
         entry = await self._repo.create(create)
         await self._bus.publish(
             JournalEntryCreated(

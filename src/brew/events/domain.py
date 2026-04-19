@@ -29,12 +29,7 @@ class BrewCompleted:
 
 @dataclass(frozen=True)
 class JournalEntryCreated:
-    """Fired by JournalService.create after a journal row is inserted.
-
-    Downstream consumers (water/bag decrement, SSE broadcaster) act on this rather
-    than on BrewCompleted so that manual POST /journal logs and auto-detected
-    brews both trigger the same state transitions.
-    """
+    """Fired by JournalService.create after a journal row is inserted."""
 
     entry_id: str
     brew_started_at: datetime

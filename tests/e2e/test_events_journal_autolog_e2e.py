@@ -3,7 +3,7 @@
 Same harness as `test_events_e2e` but asserts the full Phase-2-part-2 chain:
 1. The poller detects a completed brew.
 2. The auto-log subscriber writes a journal row using the active bag's profile_snapshot.
-3. Two SSE events are fanned out: BrewCompleted and JournalEntryCreated.
+3. `JournalEntryCreated` is fanned out via SSE (BrewCompleted is internal-only).
 4. GET /journal returns the row.
 """
 
@@ -161,16 +161,13 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(
         try:
             payloads = await _read_sse_events(
                 send_queue,
-                expected_types={"BrewCompleted", "JournalEntryCreated"},
+                expected_types={"JournalEntryCreated"},
             )
-            brew_completed = payloads["BrewCompleted"]
-            assert brew_completed["profile_id"] == "p-1"
-
             entry_created = payloads["JournalEntryCreated"]
             assert entry_created["profile_id"] == "p-1"
             assert entry_created["bag_id"] == bag_id
             assert entry_created["water_ml"] == 330
-            assert entry_created["dose_grams"] == 21  # int(330 / 15.5)
+            assert entry_created["dose_grams"] == 21
         finally:
             await _close_asgi_task(receive_queue, app_task)
 

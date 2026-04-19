@@ -35,7 +35,7 @@ async def test_handles_matching_active_bag() -> None:
     assert arg.bag_id == "bag-active"
     assert arg.profile_id == "p-1"
     assert arg.water_ml == 330
-    assert arg.dose_grams == 21  # int(330 / 15.5)
+    assert arg.dose_grams == 21
     assert arg.profile_snapshot_at_brew == {"target_volume": 330, "ratio": 15.5}
     assert arg.brew_started_at == datetime(2026, 4, 18, 7, 0, 0, tzinfo=UTC)
     assert arg.brew_ended_at == datetime(2026, 4, 18, 7, 7, 0, tzinfo=UTC)

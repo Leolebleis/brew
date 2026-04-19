@@ -1,10 +1,11 @@
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Response
 
 from brew.bags.dependencies import get_bag_service
 from brew.bags.service import BagService
+from brew.journal.defaults import derive_dose_grams, derive_water_ml
 from brew.journal.dependencies import get_journal_service
 from brew.journal.mapper import JournalMapper
 from brew.journal.model.api.requests import (
@@ -46,32 +47,23 @@ async def create_entry(
     """Create a journal entry (manual log). Defaults fill in from the active bag."""
     now = datetime.now(UTC)
     bag_id = request.bag_id
-    bag = None
     if bag_id is None:
         bag = await bag_service.get_active()
         bag_id = bag.id if bag else None
     else:
         bag = await bag_service.get(bag_id)
 
-    profile_snapshot: dict[str, Any] = bag.profile_snapshot if bag else {}
-    profile_id = request.profile_id or (bag.profile_id if bag else None)
-
-    water_ml = request.water_ml if request.water_ml is not None else int(profile_snapshot.get("target_volume") or 0)
-    ratio = profile_snapshot.get("ratio")
-    if request.dose_grams is not None:
-        dose_grams = request.dose_grams
-    elif ratio and water_ml:
-        dose_grams = int(water_ml / ratio)
-    else:
-        dose_grams = 0
+    snapshot = bag.profile_snapshot if bag else {}
+    water_ml = request.water_ml if request.water_ml is not None else derive_water_ml(snapshot)
+    dose_grams = request.dose_grams if request.dose_grams is not None else derive_dose_grams(water_ml, snapshot)
 
     entry = await journal_service.create(
         JournalEntryCreate(
             brew_started_at=request.brew_started_at or now,
             brew_ended_at=request.brew_ended_at or now,
             bag_id=bag_id,
-            profile_id=profile_id,
-            profile_snapshot_at_brew=dict(profile_snapshot),
+            profile_id=request.profile_id or (bag.profile_id if bag else None),
+            profile_snapshot_at_brew=dict(snapshot),
             water_ml=water_ml,
             dose_grams=dose_grams,
         )
