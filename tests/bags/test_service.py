@@ -107,48 +107,32 @@ async def test_zero_raises_not_found_when_missing() -> None:
         await service.zero("nope")
 
 
-async def test_decrement_subtracts_from_specific_bag() -> None:
+async def test_decrement_delegates_to_repo_when_match() -> None:
     mock_repo = AsyncMock()
-    mock_repo.get.return_value = make_bag(id="b1", remaining_grams=200, finished_at=None)
+    mock_repo.decrement.return_value = True
 
     service = BagService(repo=mock_repo)
     await service.decrement("b1", 21)
 
-    mock_repo.set_remaining_grams.assert_awaited_once_with("b1", 179)
-    mock_repo.zero.assert_not_awaited()
-
-
-async def test_decrement_zeros_when_remaining_would_hit_zero() -> None:
-    mock_repo = AsyncMock()
-    mock_repo.get.return_value = make_bag(id="b1", remaining_grams=10, finished_at=None)
-
-    service = BagService(repo=mock_repo)
-    await service.decrement("b1", 21)
-
-    mock_repo.zero.assert_awaited_once_with("b1")
-    mock_repo.set_remaining_grams.assert_not_awaited()
+    mock_repo.decrement.assert_awaited_once_with("b1", 21)
+    mock_repo.get.assert_not_awaited()
 
 
 async def test_decrement_noop_when_already_finished() -> None:
-    from datetime import UTC, datetime  # noqa: PLC0415 — local to a single test
-
-    finished_bag = make_bag(
-        id="b1",
-        remaining_grams=0,
-        finished_at=datetime(2026, 4, 18, 7, 0, 0, tzinfo=UTC),
-    )
+    # decrement returns False (already finished) → service confirms bag exists, no-op
     mock_repo = AsyncMock()
-    mock_repo.get.return_value = finished_bag
+    mock_repo.decrement.return_value = False
+    mock_repo.get.return_value = make_bag(id="b1")
 
     service = BagService(repo=mock_repo)
     await service.decrement("b1", 21)
 
-    mock_repo.set_remaining_grams.assert_not_awaited()
-    mock_repo.zero.assert_not_awaited()
+    mock_repo.get.assert_awaited_once_with("b1")
 
 
 async def test_decrement_raises_not_found_when_missing() -> None:
     mock_repo = AsyncMock()
+    mock_repo.decrement.return_value = False
     mock_repo.get.return_value = None
 
     service = BagService(repo=mock_repo)

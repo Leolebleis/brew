@@ -53,11 +53,10 @@ class BagService:
         """Decrement a specific bag. Zeros + finishes it if it would hit 0.
 
         No-op if the bag is already finished — preserves the original finished_at.
+        Common path is one DB roundtrip; only the not-found/finished cases pay
+        a second read to disambiguate.
         """
-        bag = await self.get(bag_id)
-        if bag.finished_at is not None:
+        if await self._repo.decrement(bag_id, grams):
             return
-        if bag.remaining_grams - grams <= 0:
-            await self._repo.zero(bag_id)
-        else:
-            await self._repo.set_remaining_grams(bag_id, bag.remaining_grams - grams)
+        if await self._repo.get(bag_id) is None:
+            raise NotFoundError.for_resource(_KIND, bag_id)

@@ -27,6 +27,7 @@ class BagRepository(Protocol):
     async def activate(self, bag_id: str) -> bool: ...
     async def zero(self, bag_id: str) -> bool: ...
     async def set_remaining_grams(self, bag_id: str, grams: int) -> bool: ...
+    async def decrement(self, bag_id: str, grams: int) -> bool: ...
 
 
 def _now_iso() -> str:
@@ -205,6 +206,27 @@ class BagSqliteRepository:
         cursor = await self._conn.execute(
             "UPDATE bags SET remaining_grams = ? WHERE id = ?",
             (clamped, bag_id),
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def decrement(self, bag_id: str, grams: int) -> bool:
+        """Atomic decrement; if the result reaches 0, also finish the bag.
+
+        Returns True if a row was matched (bag exists and was not yet finished).
+        Returns False on not-found OR already-finished — the caller disambiguates.
+        SQL clamps remaining_grams at 0; CASE handles the zero-and-finish in one statement.
+        """
+        now = _now_iso()
+        cursor = await self._conn.execute(
+            """
+            UPDATE bags
+            SET remaining_grams = MAX(0, remaining_grams - ?),
+                is_active = CASE WHEN remaining_grams - ? <= 0 THEN 0 ELSE is_active END,
+                finished_at = CASE WHEN remaining_grams - ? <= 0 THEN ? ELSE finished_at END
+            WHERE id = ? AND finished_at IS NULL
+            """,
+            (grams, grams, grams, now, bag_id),
         )
         await self._conn.commit()
         return cursor.rowcount > 0
