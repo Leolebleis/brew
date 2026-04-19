@@ -185,3 +185,9 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(
             assert water_resp.status_code == 200
             # Reservoir starts at MAX (1500 ml); the brew used 330 ml.
             assert water_resp.json()["remaining_ml"] == 1500 - 330
+
+            bag_resp = await http.get(f"/bags/{bag_id}")
+            assert bag_resp.status_code == 200
+            # initial_grams=250, dose_grams=21 → 229 left, still active.
+            assert bag_resp.json()["remaining_grams"] == 250 - 21
+            assert bag_resp.json()["is_active"] is True
