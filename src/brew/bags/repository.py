@@ -2,12 +2,13 @@
 
 import json
 import uuid
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 from typing import Protocol
 
 import aiosqlite
 
 from brew.bags.model.bag import Bag, BagCreate, BagUpdate
+from brew.datetime_utils import now_iso
 
 
 class BagRepository(Protocol):
@@ -28,10 +29,6 @@ class BagRepository(Protocol):
     async def zero(self, bag_id: str) -> bool: ...
     async def set_remaining_grams(self, bag_id: str, grams: int) -> bool: ...
     async def decrement(self, bag_id: str, grams: int) -> bool: ...
-
-
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -66,7 +63,7 @@ class BagSqliteRepository:
 
     async def create(self, create: BagCreate) -> Bag:
         bag_id = str(uuid.uuid4())
-        opened_at = _now_iso()
+        opened_at = now_iso()
         await self._conn.execute(
             """
             INSERT INTO bags (
@@ -192,7 +189,7 @@ class BagSqliteRepository:
         return True
 
     async def zero(self, bag_id: str) -> bool:
-        now = _now_iso()
+        now = now_iso()
         cursor = await self._conn.execute(
             """
             UPDATE bags
@@ -220,7 +217,7 @@ class BagSqliteRepository:
         Returns False on not-found OR already-finished — the caller disambiguates.
         SQL clamps remaining_grams at 0; CASE handles the zero-and-finish in one statement.
         """
-        now = _now_iso()
+        now = now_iso()
         cursor = await self._conn.execute(
             """
             UPDATE bags

@@ -2,11 +2,12 @@
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Protocol
 
 import aiosqlite
 
+from brew.datetime_utils import now_iso, to_iso
 from brew.journal.model.entry import JournalEntry, JournalEntryCreate
 
 
@@ -24,14 +25,6 @@ class JournalRepository(Protocol):
     ) -> list[JournalEntry]: ...
     async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> bool: ...
     async def delete(self, entry_id: str) -> bool: ...
-
-
-def _now_iso() -> str:
-    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
-
-def _dt_to_iso(value: datetime) -> str:
-    return value.isoformat().replace("+00:00", "Z")
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -60,7 +53,7 @@ class JournalSqliteRepository:
 
     async def create(self, create: JournalEntryCreate) -> JournalEntry:
         entry_id = str(uuid.uuid4())
-        created_at = _now_iso()
+        created_at = now_iso()
         await self._conn.execute(
             """
             INSERT INTO journal_entries (
@@ -70,8 +63,8 @@ class JournalSqliteRepository:
             """,
             (
                 entry_id,
-                _dt_to_iso(create.brew_started_at),
-                _dt_to_iso(create.brew_ended_at),
+                to_iso(create.brew_started_at),
+                to_iso(create.brew_ended_at),
                 create.bag_id,
                 create.profile_id,
                 json.dumps(create.profile_snapshot_at_brew),
@@ -111,7 +104,7 @@ class JournalSqliteRepository:
             params.append(profile_id)
         if since is not None:
             clauses.append("brew_ended_at >= ?")
-            params.append(_dt_to_iso(since))
+            params.append(to_iso(since))
         if rating_min is not None:
             clauses.append("rating >= ?")
             params.append(rating_min)
