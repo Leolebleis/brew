@@ -36,11 +36,3 @@ class JournalEntryCreate:
     profile_snapshot_at_brew: dict[str, Any]
     water_ml: int
     dose_grams: int
-
-
-@dataclass(frozen=True)
-class JournalEntryUpdate:
-    """Partial update — only `rating` and `note_text` are user-editable."""
-
-    rating: int | None = None
-    note_text: str | None = None
