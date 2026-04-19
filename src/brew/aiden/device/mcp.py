@@ -1,13 +1,13 @@
-import json
-from dataclasses import asdict
-
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
 
 from brew.aiden.device.model.device import DeviceSettings
 from brew.aiden.device.service import DeviceService
 from brew.errors import DomainError
-from brew.response_models import ErrorResponse
+from brew.mcp_utils import (
+    domain_error_to_resource_payload,
+    domain_error_to_tool_error,
+    jsonify,
+)
 
 
 def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
@@ -16,9 +16,8 @@ def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
         try:
             device = await service.get_device()
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            return json.dumps({"error": body.model_dump()})
-        return json.dumps(asdict(device), default=str)
+            return domain_error_to_resource_payload(e)
+        return jsonify(device)
 
     @mcp.tool(
         description=("Change a device setting (e.g. display name, volume). Provide the setting name and new value."),
@@ -31,6 +30,5 @@ def register_device_mcp(mcp: FastMCP, service: DeviceService) -> None:
         try:
             await service.adjust_setting(settings)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return f"Device setting '{setting}' updated successfully."

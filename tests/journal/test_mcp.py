@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastmcp import FastMCP
 
+from brew.errors import NotFoundError
 from brew.journal.mcp import register_journal_mcp
 from tests.journal.conftest import make_entry
 
@@ -49,3 +50,19 @@ async def test_coffee_journal_list_is_bounded(mcp: FastMCP, mock_service: AsyncM
     mock_service.list.assert_awaited_once()
     call = mock_service.list.await_args
     assert call.kwargs.get("limit") == 50
+
+
+async def test_get_entry_wraps_not_found_in_envelope(mcp: FastMCP, mock_service: AsyncMock) -> None:
+    """Resource handler must surface NotFoundError as the standard envelope, not a raw transport error."""
+    mock_service.get.side_effect = NotFoundError(
+        message="Journal entry e99 not found",
+        resource_kind="journal_entry",
+        resource_id="e99",
+    )
+
+    result = await mcp.read_resource("coffee://journal/e99")
+    data = json.loads(result.contents[0].content)
+
+    assert "error" in data
+    assert data["error"]["code"] == "not_found"
+    assert data["error"]["context"]["resource_id"] == "e99"

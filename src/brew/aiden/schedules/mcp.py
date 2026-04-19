@@ -2,13 +2,16 @@ import json
 from dataclasses import asdict
 
 from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from brew.aiden.schedules.model.schedule import ScheduleCreate, ScheduleUpdate
 from brew.aiden.schedules.service import ScheduleService
 from brew.errors import DomainError
-from brew.response_models import ErrorResponse
+from brew.mcp_utils import (
+    domain_error_to_resource_payload,
+    domain_error_to_tool_error,
+    jsonify,
+)
 
 
 def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
@@ -20,9 +23,8 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         try:
             schedules = await service.list_schedules()
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            return json.dumps({"error": body.model_dump()})
-        return json.dumps([asdict(s) for s in schedules], default=str)
+            return domain_error_to_resource_payload(e)
+        return jsonify(schedules)
 
     @mcp.tool(
         description=(
@@ -52,8 +54,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         try:
             schedule = await service.create_schedule(create)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return json.dumps({"status": "created", "schedule": asdict(schedule)}, default=str)
 
     @mcp.tool(
@@ -81,8 +82,7 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         try:
             await service.update_schedule(schedule_id, update)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return f"Schedule '{schedule_id}' updated successfully."
 
     @mcp.tool(
@@ -93,6 +93,5 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         try:
             await service.delete_schedule(schedule_id)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return f"Schedule '{schedule_id}' deleted."

@@ -8,7 +8,11 @@ from mcp.types import ToolAnnotations
 from brew.aiden.profiles.model.profile import ProfileCreate, ProfileUpdate
 from brew.aiden.profiles.service import ProfileService
 from brew.errors import DomainError
-from brew.response_models import ErrorResponse
+from brew.mcp_utils import (
+    domain_error_to_resource_payload,
+    domain_error_to_tool_error,
+    jsonify,
+)
 
 _MANUAL_CREATE_REQUIRED_MSG = (
     "Manual profile creation requires at least: title, profile_type, and ratio. Other fields have sensible defaults."
@@ -21,18 +25,16 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         try:
             profiles = await service.list_profiles()
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            return json.dumps({"error": body.model_dump()})
-        return json.dumps([asdict(p) for p in profiles], default=str)
+            return domain_error_to_resource_payload(e)
+        return jsonify(profiles)
 
     @mcp.resource("coffee://profiles/{profile_id}", description="A single brew profile by ID.")
     async def get_profile(profile_id: str) -> str:
         try:
             profile = await service.get_profile(profile_id)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            return json.dumps({"error": body.model_dump()})
-        return json.dumps(asdict(profile), default=str)
+            return domain_error_to_resource_payload(e)
+        return jsonify(profile)
 
     @mcp.tool(
         description=(
@@ -88,8 +90,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         except ToolError:
             raise
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return json.dumps({"status": "created", "profile": asdict(profile)}, default=str)
 
     @mcp.tool(
@@ -131,8 +132,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         try:
             await service.update_profile(profile_id, update)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return f"Profile '{profile_id}' updated successfully."
 
     @mcp.tool(
@@ -143,8 +143,7 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         try:
             await service.delete_profile(profile_id)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return f"Profile '{profile_id}' deleted."
 
     @mcp.tool(
@@ -155,6 +154,5 @@ def register_profile_mcp(mcp: FastMCP, service: ProfileService) -> None:  # noqa
         try:
             link = await service.generate_link(profile_id)
         except DomainError as e:
-            body = ErrorResponse.from_domain_error(e)
-            raise ToolError(json.dumps({"error": body.model_dump()})) from e
+            raise domain_error_to_tool_error(e) from e
         return json.dumps({"profile_id": profile_id, "share_url": link.url})
