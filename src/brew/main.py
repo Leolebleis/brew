@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -27,6 +27,12 @@ from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
+from brew.events.broadcaster import EventBroadcaster
+from brew.events.bus import EventBus
+from brew.events.dependencies import get_event_broadcaster
+from brew.events.domain import BrewCompleted
+from brew.events.poller import DeviceBrewingPoller
+from brew.events.router import router as events_router
 from brew.exception_handlers import register_exception_handlers
 from brew.health.router import router as health_router
 from brew.journal.dependencies import get_journal_service
@@ -63,12 +69,20 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn))
 
+    bus = EventBus()
+    broadcaster = EventBroadcaster()
+    bus.subscribe(BrewCompleted, broadcaster.broadcast)
+
+    poller = DeviceBrewingPoller(device_service=device_service, bus=bus)
+    poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
+
     app.dependency_overrides[get_device_service] = lambda: device_service
     app.dependency_overrides[get_profile_service] = lambda: profile_service
     app.dependency_overrides[get_schedule_service] = lambda: schedule_service
     app.dependency_overrides[get_water_service] = lambda: water_service
     app.dependency_overrides[get_bag_service] = lambda: bag_service
     app.dependency_overrides[get_journal_service] = lambda: journal_service
+    app.dependency_overrides[get_event_broadcaster] = lambda: broadcaster
 
     if _mcp_enabled:
         from brew.aiden.device.mcp import register_device_mcp  # noqa: PLC0415
@@ -88,6 +102,9 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     try:
         yield
     finally:
+        poller_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await poller_task
         await db_conn.close()
         app.dependency_overrides.clear()
 
@@ -120,6 +137,7 @@ app.include_router(schedules_router, dependencies=[Depends(require_api_key)])
 app.include_router(water_router, dependencies=[Depends(require_api_key)])
 app.include_router(bags_router, dependencies=[Depends(require_api_key)])
 app.include_router(journal_router, dependencies=[Depends(require_api_key)])
+app.include_router(events_router, dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
