@@ -1,7 +1,7 @@
 """SQLite schema for the journal bounded context.
 
-One row per completed brew. Created by `JournalService.create_from_brew_event` (called
-from the Phase-2 BrewCompleted subscriber) — there is no public POST endpoint.
+One row per completed brew. Created via `JournalService.create` — from the
+`POST /journal` route (manual log) or the `BrewCompleted` auto-log subscriber.
 
 Invariants:
 - `profile_snapshot_at_brew` is frozen at brew time; never updated.

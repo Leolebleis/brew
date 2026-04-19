@@ -8,7 +8,9 @@ Approach:
 - Mutate fellow_mock.get_device_config.return_value to simulate brewing state flips.
 - Open a direct ASGI connection to `/events` by calling app(scope, receive, send)
   in a background task, push `http.request` via the `receive` queue, read SSE
-  frames from the `send` queue until a BrewCompleted data frame appears.
+  frames from the `send` queue until a JournalEntryCreated data frame appears
+  (the poller's BrewCompleted event is internal-only; the auto-log subscriber
+  converts it into a JournalEntryCreated that the broadcaster fans out).
 - The default poller interval is 5s; wait up to 15s for the transition detection
   plus SSE delivery.
 """
@@ -93,7 +95,7 @@ async def _close_asgi_task(receive_queue: asyncio.Queue, app_task: asyncio.Task)
             await app_task
 
 
-async def test_poller_emits_brew_completed_via_sse(
+async def test_poller_triggers_journal_entry_via_sse(
     events_fellow_mock: Mock,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -138,7 +140,8 @@ async def test_poller_emits_brew_completed_via_sse(
         try:
             payload = await _read_sse_payload(send_queue)
             assert payload["profile_id"] == "p-1"
-            assert "brew_started_at" in payload
-            assert "brew_ended_at" in payload
+            assert "entry_id" in payload
+            assert payload["bag_id"] is None
+            assert payload["water_ml"] == 0
         finally:
             await _close_asgi_task(receive_queue, app_task)

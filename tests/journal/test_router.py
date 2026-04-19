@@ -102,8 +102,3 @@ async def test_delete_returns_204(client: AsyncClient, mock_service: AsyncMock) 
 
     assert response.status_code == 204
     mock_service.delete.assert_awaited_once_with("e1")
-
-
-async def test_no_public_post_endpoint(client: AsyncClient) -> None:
-    response = await client.post("/journal", json={})
-    assert response.status_code in {404, 405}

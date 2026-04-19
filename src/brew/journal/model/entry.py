@@ -27,7 +27,7 @@ class JournalEntry:
 
 @dataclass(frozen=True)
 class JournalEntryCreate:
-    """Inputs the BrewCompleted subscriber hands to `JournalService.create_from_brew_event`."""
+    """Inputs to JournalService.create."""
 
     brew_started_at: datetime
     brew_ended_at: datetime
