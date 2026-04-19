@@ -7,6 +7,7 @@ from typing import Any, Protocol
 from fellow_aiden import FellowAiden
 from pydantic import ValidationError as PydanticValidationError
 
+from brew.aiden._fellow_call import NotFoundSpec, fellow_call, fellow_call_or_not_found
 from brew.aiden.datetime_parsing import parse_fellow_datetime
 from brew.aiden.schedules.model.schedule import (
     Schedule,
@@ -15,7 +16,6 @@ from brew.aiden.schedules.model.schedule import (
 )
 from brew.errors import (
     CloudUnreachableError,
-    NotFoundError,
     ValidationError,
 )
 
@@ -82,17 +82,12 @@ class FellowScheduleHttpClient:
         self._fellow = fellow
 
     async def get_schedules(self) -> list[Schedule]:
-        try:
-            data: list[dict[str, Any]] = await asyncio.to_thread(self._fellow.get_schedules)
-        except Exception as e:
-            logger.debug("Fellow get_schedules failed", exc_info=True)
-            raise CloudUnreachableError(
-                message="Could not reach Fellow cloud to list schedules",
-                original=type(e).__name__,
-            ) from e
+        data: list[dict[str, Any]] = await fellow_call("list schedules", self._fellow.get_schedules)
         return [FellowScheduleHttpMapper.to_entity(s) for s in data]
 
     async def create_schedule(self, schedule: ScheduleCreate) -> Schedule:
+        # Bypasses fellow_call: needs to distinguish PydanticValidationError from other errors
+        # before they get bucketed as CloudUnreachableError.
         payload = FellowScheduleHttpMapper.from_create(schedule)
         try:
             result: dict[str, Any] = await asyncio.to_thread(self._fellow.create_schedule, payload)
@@ -129,33 +124,18 @@ class FellowScheduleHttpClient:
             )
         if "enabled" not in payload:
             return
-        try:
-            await asyncio.to_thread(self._fellow.toggle_schedule, schedule_id, payload["enabled"])
-        except Exception as e:
-            if "not found" in str(e).lower():
-                raise NotFoundError(
-                    message=f"Schedule {schedule_id} not found",
-                    resource_kind="schedule",
-                    resource_id=schedule_id,
-                ) from e
-            logger.debug("Fellow toggle_schedule failed", exc_info=True)
-            raise CloudUnreachableError(
-                message="Could not reach Fellow cloud to toggle schedule",
-                original=type(e).__name__,
-            ) from e
+        await fellow_call_or_not_found(
+            "toggle schedule",
+            NotFoundSpec(resource_kind="schedule", resource_id=schedule_id),
+            self._fellow.toggle_schedule,
+            schedule_id,
+            payload["enabled"],
+        )
 
     async def delete_schedule(self, schedule_id: str) -> None:
-        try:
-            await asyncio.to_thread(self._fellow.delete_schedule_by_id, schedule_id)
-        except Exception as e:
-            if "not found" in str(e).lower():
-                raise NotFoundError(
-                    message=f"Schedule {schedule_id} not found",
-                    resource_kind="schedule",
-                    resource_id=schedule_id,
-                ) from e
-            logger.debug("Fellow delete_schedule failed", exc_info=True)
-            raise CloudUnreachableError(
-                message="Could not reach Fellow cloud to delete schedule",
-                original=type(e).__name__,
-            ) from e
+        await fellow_call_or_not_found(
+            "delete schedule",
+            NotFoundSpec(resource_kind="schedule", resource_id=schedule_id),
+            self._fellow.delete_schedule_by_id,
+            schedule_id,
+        )
