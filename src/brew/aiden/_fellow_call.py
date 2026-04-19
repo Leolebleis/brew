@@ -61,11 +61,7 @@ async def fellow_call_or_not_found[T](
         return await asyncio.to_thread(fn, *args, **kwargs)
     except Exception as e:
         if is_not_found(e):
-            raise NotFoundError(
-                message=f"{not_found.resource_kind} {not_found.resource_id} not found",
-                resource_kind=not_found.resource_kind,
-                resource_id=not_found.resource_id,
-            ) from e
+            raise NotFoundError.for_resource(not_found.resource_kind, not_found.resource_id) from e
         logger.debug("Fellow %s failed", op, exc_info=True)
         raise CloudUnreachableError(
             message=f"Could not reach Fellow cloud to {op}",

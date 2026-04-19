@@ -27,6 +27,7 @@ class BagRepository(Protocol):
     async def activate(self, bag_id: str) -> bool: ...
     async def zero(self, bag_id: str) -> bool: ...
     async def set_remaining_grams(self, bag_id: str, grams: int) -> bool: ...
+    async def decrement(self, bag_id: str, grams: int) -> bool: ...
 
 
 def _now_iso() -> str:
@@ -178,12 +179,15 @@ class BagSqliteRepository:
         return cursor.rowcount > 0
 
     async def activate(self, bag_id: str) -> bool:
-        exists_cursor = await self._conn.execute("SELECT 1 FROM bags WHERE id = ?", (bag_id,))
-        if await exists_cursor.fetchone() is None:
+        # Optimistic: try to set the target active first. rowcount==0 means it doesn't exist.
+        # If it does exist, deactivate any other previously-active bag in the same transaction.
+        cursor = await self._conn.execute("UPDATE bags SET is_active = 1 WHERE id = ?", (bag_id,))
+        if cursor.rowcount == 0:
             return False
-
-        await self._conn.execute("UPDATE bags SET is_active = 0 WHERE is_active = 1")
-        await self._conn.execute("UPDATE bags SET is_active = 1 WHERE id = ?", (bag_id,))
+        await self._conn.execute(
+            "UPDATE bags SET is_active = 0 WHERE id != ? AND is_active = 1",
+            (bag_id,),
+        )
         await self._conn.commit()
         return True
 
@@ -205,6 +209,27 @@ class BagSqliteRepository:
         cursor = await self._conn.execute(
             "UPDATE bags SET remaining_grams = ? WHERE id = ?",
             (clamped, bag_id),
+        )
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def decrement(self, bag_id: str, grams: int) -> bool:
+        """Atomic decrement; if the result reaches 0, also finish the bag.
+
+        Returns True if a row was matched (bag exists and was not yet finished).
+        Returns False on not-found OR already-finished — the caller disambiguates.
+        SQL clamps remaining_grams at 0; CASE handles the zero-and-finish in one statement.
+        """
+        now = _now_iso()
+        cursor = await self._conn.execute(
+            """
+            UPDATE bags
+            SET remaining_grams = MAX(0, remaining_grams - ?),
+                is_active = CASE WHEN remaining_grams - ? <= 0 THEN 0 ELSE is_active END,
+                finished_at = CASE WHEN remaining_grams - ? <= 0 THEN ? ELSE finished_at END
+            WHERE id = ? AND finished_at IS NULL
+            """,
+            (grams, grams, grams, now, bag_id),
         )
         await self._conn.commit()
         return cursor.rowcount > 0

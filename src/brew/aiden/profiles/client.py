@@ -35,6 +35,8 @@ from brew.errors import (
 
 logger = logging.getLogger(__name__)
 
+_KIND = "profile"
+
 # get_profile() does a linear scan of get_profiles() — every MCP read_resource and every
 # brew via the auto-log path hits this. A short TTL absorbs read bursts without making the
 # cache feel stale during interactive use.
@@ -210,11 +212,7 @@ class FellowProfileHttpClient:
             raise ValidationError(message=str(e), reason=str(e)) from e
         except Exception as e:
             if is_not_found(e):
-                raise NotFoundError(
-                    message=f"Profile {profile_id} not found",
-                    resource_kind="profile",
-                    resource_id=profile_id,
-                ) from e
+                raise NotFoundError.for_resource(_KIND, profile_id) from e
             logger.debug("Fellow update_profile failed", exc_info=True)
             raise CloudUnreachableError(
                 message="Could not reach Fellow cloud to update profile",
@@ -225,7 +223,7 @@ class FellowProfileHttpClient:
     async def delete_profile(self, profile_id: str) -> None:
         await fellow_call_or_not_found(
             "delete profile",
-            NotFoundSpec(resource_kind="profile", resource_id=profile_id),
+            NotFoundSpec(resource_kind=_KIND, resource_id=profile_id),
             self._fellow.delete_profile_by_id,
             profile_id,
         )

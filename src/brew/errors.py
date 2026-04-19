@@ -52,6 +52,20 @@ class NotFoundError(DomainError):
     resource_kind: str | None = None
     resource_id: str | None = None
 
+    @classmethod
+    def for_resource(cls, kind: str, resource_id: str) -> "NotFoundError":
+        """Build the canonical 'X {id} not found' shape used across all services.
+
+        Underscores in `kind` become spaces in the human-readable message — so
+        `kind="journal_entry"` yields `"Journal entry foo not found"`.
+        """
+        display = kind.replace("_", " ").capitalize()
+        return cls(
+            message=f"{display} {resource_id} not found",
+            resource_kind=kind,
+            resource_id=resource_id,
+        )
+
 
 @dataclass
 class SlotLimitError(DomainError):

@@ -24,22 +24,13 @@ async def test_refill_delegates_to_repository() -> None:
     mock_repo.refill.assert_awaited_once()
 
 
-async def test_decrement_subtracts_from_current_level() -> None:
+async def test_decrement_delegates_to_repository() -> None:
+    # Repo decrement is a single SQL UPDATE that clamps; see test_repository.py.
     mock_repo = AsyncMock()
-    mock_repo.get.return_value = make_water(remaining_ml=1000)
 
     service = WaterService(repo=mock_repo)
     await service.decrement(250)
 
-    mock_repo.set_remaining_ml.assert_awaited_once_with(750)
-
-
-async def test_decrement_passes_raw_delta_to_repo() -> None:
-    # Repo owns the clamp invariant — see test_repository.py::test_set_remaining_ml_clamps_below_zero.
-    mock_repo = AsyncMock()
-    mock_repo.get.return_value = make_water(remaining_ml=100)
-
-    service = WaterService(repo=mock_repo)
-    await service.decrement(500)
-
-    mock_repo.set_remaining_ml.assert_awaited_once_with(-400)
+    mock_repo.decrement.assert_awaited_once_with(250)
+    mock_repo.get.assert_not_awaited()
+    mock_repo.set_remaining_ml.assert_not_awaited()

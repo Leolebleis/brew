@@ -189,3 +189,44 @@ async def test_set_remaining_grams_clamps_below_zero(repo: BagSqliteRepository) 
 
 async def test_set_remaining_grams_missing_returns_false(repo: BagSqliteRepository) -> None:
     assert await repo.set_remaining_grams("does-not-exist", 100) is False
+
+
+async def test_decrement_subtracts_in_a_single_statement(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(initial_grams=250))
+
+    ok = await repo.decrement(created.id, 21)
+    assert ok is True
+
+    updated = await repo.get(created.id)
+    assert updated is not None
+    assert updated.remaining_grams == 229
+    assert updated.finished_at is None
+
+
+async def test_decrement_zeros_and_finishes_when_reaching_empty(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(initial_grams=20))
+    await repo.activate(created.id)
+
+    ok = await repo.decrement(created.id, 50)
+    assert ok is True
+
+    finished = await repo.get(created.id)
+    assert finished is not None
+    assert finished.remaining_grams == 0
+    assert finished.is_active is False
+    assert finished.finished_at is not None
+
+
+async def test_decrement_missing_returns_false(repo: BagSqliteRepository) -> None:
+    assert await repo.decrement("does-not-exist", 21) is False
+
+
+async def test_decrement_already_finished_returns_false(repo: BagSqliteRepository) -> None:
+    created = await repo.create(make_bag_create(initial_grams=10))
+    await repo.zero(created.id)
+
+    assert await repo.decrement(created.id, 5) is False
+    # finished_at should NOT have been bumped
+    finished = await repo.get(created.id)
+    assert finished is not None
+    assert finished.remaining_grams == 0

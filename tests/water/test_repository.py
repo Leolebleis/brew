@@ -39,3 +39,17 @@ async def test_set_remaining_ml_clamps_above_1500(repo: WaterSqliteRepository) -
     await repo.set_remaining_ml(99999)
     water = await repo.get()
     assert water.remaining_ml == 1500
+
+
+async def test_decrement_subtracts_in_a_single_statement(repo: WaterSqliteRepository) -> None:
+    await repo.set_remaining_ml(1000)
+    await repo.decrement(250)
+    water = await repo.get()
+    assert water.remaining_ml == 750
+
+
+async def test_decrement_clamps_below_zero(repo: WaterSqliteRepository) -> None:
+    await repo.set_remaining_ml(100)
+    await repo.decrement(500)
+    water = await repo.get()
+    assert water.remaining_ml == 0
