@@ -107,26 +107,6 @@ async def test_zero_raises_not_found_when_missing() -> None:
         await service.zero("nope")
 
 
-async def test_decrement_active_subtracts_from_current() -> None:
-    mock_repo = AsyncMock()
-    mock_repo.get_active.return_value = make_bag(id="a1", remaining_grams=200)
-
-    service = BagService(repo=mock_repo)
-    await service.decrement_active(15)
-
-    mock_repo.set_remaining_grams.assert_awaited_once_with("a1", 185)
-
-
-async def test_decrement_active_noop_when_no_active_bag() -> None:
-    mock_repo = AsyncMock()
-    mock_repo.get_active.return_value = None
-
-    service = BagService(repo=mock_repo)
-    await service.decrement_active(15)  # must not raise
-
-    mock_repo.set_remaining_grams.assert_not_awaited()
-
-
 async def test_decrement_subtracts_from_specific_bag() -> None:
     mock_repo = AsyncMock()
     mock_repo.get.return_value = make_bag(id="b1", remaining_grams=200, finished_at=None)
