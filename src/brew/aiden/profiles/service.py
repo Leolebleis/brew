@@ -1,7 +1,5 @@
 """Profile service — orchestrates the profile client."""
 
-import logging
-
 from brew.aiden.profiles.client import FellowProfileClient
 from brew.aiden.profiles.model.profile import (
     Profile,
@@ -10,8 +8,6 @@ from brew.aiden.profiles.model.profile import (
     ProfileUpdate,
 )
 from brew.errors import NotFoundError
-
-logger = logging.getLogger(__name__)
 
 
 class ProfileService:

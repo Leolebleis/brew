@@ -1,11 +1,7 @@
 """Device service — orchestrates the device client."""
 
-import logging
-
 from brew.aiden.device.client import FellowDeviceClient
 from brew.aiden.device.model.device import Device, DeviceSettings
-
-logger = logging.getLogger(__name__)
 
 
 class DeviceService:
