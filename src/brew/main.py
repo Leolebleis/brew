@@ -34,6 +34,7 @@ from brew.events.domain import BrewCompleted, JournalEntryCreated
 from brew.events.poller import DeviceBrewingPoller
 from brew.events.router import router as events_router
 from brew.events.subscribers.journal_auto_log import make_journal_auto_log_handler
+from brew.events.subscribers.water_decrement import make_water_decrement_handler
 from brew.exception_handlers import register_exception_handlers
 from brew.health.router import router as health_router
 from brew.journal.dependencies import get_journal_service
@@ -79,6 +80,7 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
         BrewCompleted,
         make_journal_auto_log_handler(journal_service, bag_service),
     )
+    bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
 
     poller = DeviceBrewingPoller(device_service=device_service, bus=bus)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
