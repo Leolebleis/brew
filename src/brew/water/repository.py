@@ -1,10 +1,11 @@
 """Water repository — Protocol + aiosqlite implementation."""
 
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Protocol
 
 import aiosqlite
 
+from brew.datetime_utils import now_iso
 from brew.water.model.water import Water
 
 _MAX_ML = 1500
@@ -53,7 +54,7 @@ class WaterSqliteRepository:
         await self._conn.commit()
 
     async def refill(self) -> None:
-        now = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        now = now_iso()
         await self._conn.execute(
             "UPDATE water_state SET remaining_ml = ?, last_refilled_at = ? WHERE id = 1",
             (_MAX_ML, now),
