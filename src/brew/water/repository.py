@@ -13,6 +13,7 @@ _MAX_ML = 1500
 class WaterRepository(Protocol):
     async def get(self) -> Water: ...
     async def set_remaining_ml(self, ml: int) -> None: ...
+    async def decrement(self, ml: int) -> None: ...
     async def refill(self) -> None: ...
 
 
@@ -40,6 +41,14 @@ class WaterSqliteRepository:
         await self._conn.execute(
             "UPDATE water_state SET remaining_ml = ? WHERE id = 1",
             (clamped,),
+        )
+        await self._conn.commit()
+
+    async def decrement(self, ml: int) -> None:
+        # Single statement avoids the read-then-write roundtrip; SQLite clamps to [0, _MAX_ML].
+        await self._conn.execute(
+            "UPDATE water_state SET remaining_ml = MAX(0, MIN(?, remaining_ml - ?)) WHERE id = 1",
+            (_MAX_ML, ml),
         )
         await self._conn.commit()
 

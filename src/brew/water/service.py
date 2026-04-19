@@ -15,5 +15,4 @@ class WaterService:
         await self._repo.refill()
 
     async def decrement(self, ml: int) -> None:
-        current = await self._repo.get()
-        await self._repo.set_remaining_ml(current.remaining_ml - ml)
+        await self._repo.decrement(ml)
