@@ -3,17 +3,36 @@
 from datetime import datetime
 
 from brew.errors import NotFoundError
+from brew.events.bus import EventBus
+from brew.events.domain import JournalEntryCreated
 from brew.journal.model.entry import JournalEntry, JournalEntryCreate
 from brew.journal.repository import JournalRepository
 
 
 class JournalService:
-    def __init__(self, repo: JournalRepository) -> None:
+    def __init__(self, repo: JournalRepository, bus: EventBus) -> None:
         self._repo = repo
+        self._bus = bus
 
-    async def create_from_brew_event(self, create: JournalEntryCreate) -> JournalEntry:
-        """Called by the Phase-2 BrewCompleted subscriber. Not exposed via REST."""
-        return await self._repo.create(create)
+    async def create(self, create: JournalEntryCreate) -> JournalEntry:
+        """Insert a journal entry and publish JournalEntryCreated.
+
+        Called by both the BrewCompleted auto-log subscriber and the POST /journal
+        route. Publishing is a side effect so every insertion path stays consistent.
+        """
+        entry = await self._repo.create(create)
+        await self._bus.publish(
+            JournalEntryCreated(
+                entry_id=entry.id,
+                brew_started_at=entry.brew_started_at,
+                brew_ended_at=entry.brew_ended_at,
+                bag_id=entry.bag_id,
+                profile_id=entry.profile_id,
+                water_ml=entry.water_ml,
+                dose_grams=entry.dose_grams,
+            )
+        )
+        return entry
 
     async def get(self, entry_id: str) -> JournalEntry:
         entry = await self._repo.get(entry_id)

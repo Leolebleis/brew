@@ -27,7 +27,8 @@ class JournalEntry:
 
 @dataclass(frozen=True)
 class JournalEntryCreate:
-    """Inputs the BrewCompleted subscriber hands to `JournalService.create_from_brew_event`."""
+    """Inputs to JournalService.create — used by both the POST /journal route
+    (manual log) and the BrewCompleted auto-log subscriber."""
 
     brew_started_at: datetime
     brew_ended_at: datetime
