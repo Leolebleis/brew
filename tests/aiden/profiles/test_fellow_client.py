@@ -239,3 +239,127 @@ async def test_create_profile_raises_unknown_error_when_fellow_returns_falsy() -
         )
 
     assert exc_info.value.original == "library returned False/None"
+
+
+# ---------- Cache tests ----------
+
+
+def _profile_create() -> ProfileCreate:
+    return ProfileCreate(
+        title="Test",
+        profile_type=1,
+        ratio=16.0,
+        bloom_enabled=False,
+        bloom_ratio=2.0,
+        bloom_duration=30,
+        bloom_temperature=93.0,
+        ss_pulses_enabled=False,
+        ss_pulses_number=1,
+        ss_pulses_interval=10,
+        ss_pulse_temperatures=[93.0],
+        batch_pulses_enabled=False,
+        batch_pulses_number=1,
+        batch_pulses_interval=10,
+        batch_pulse_temperatures=[93.0],
+    )
+
+
+async def test_get_profiles_cache_hit_skips_fellow_call() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 1
+
+
+async def test_get_profile_uses_cache_after_first_call() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    profile = await client.get_profile("p0")
+
+    assert profile == EXPECTED_PROFILE
+    assert mock_fellow.get_profiles.call_count == 1
+
+
+async def test_cache_expires_after_ttl() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+
+    client = FellowProfileHttpClient(fellow=mock_fellow, cache_ttl_seconds=0.0)
+    await client.get_profiles()
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 2
+
+
+async def test_create_profile_invalidates_cache() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+    mock_fellow.create_profile.return_value = SAMPLE_FELLOW_PROFILE
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    await client.create_profile(_profile_create())
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 2
+
+
+async def test_create_profile_from_link_invalidates_cache() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+    mock_fellow.create_profile_from_link.return_value = SAMPLE_FELLOW_PROFILE
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    await client.create_profile_from_link("https://brew.link/abc")
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 2
+
+
+async def test_update_profile_invalidates_cache() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+    mock_fellow.update_profile.return_value = None
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    await client.update_profile("p0", ProfileUpdate(title="New title"))
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 2
+
+
+async def test_delete_profile_invalidates_cache() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+    mock_fellow.delete_profile_by_id.return_value = True
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    await client.delete_profile("p0")
+    await client.get_profiles()
+
+    assert mock_fellow.get_profiles.call_count == 2
+
+
+async def test_failed_create_profile_does_not_invalidate_cache() -> None:
+    mock_fellow = MagicMock()
+    mock_fellow.get_profiles.return_value = [SAMPLE_FELLOW_PROFILE]
+    mock_fellow.create_profile.side_effect = Exception("timeout")
+
+    client = FellowProfileHttpClient(fellow=mock_fellow)
+    await client.get_profiles()
+    with pytest.raises(CloudUnreachableError):
+        await client.create_profile(_profile_create())
+    await client.get_profiles()
+
+    # Second get_profiles should be served from cache (creation failed)
+    assert mock_fellow.get_profiles.call_count == 1
