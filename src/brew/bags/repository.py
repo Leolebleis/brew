@@ -179,12 +179,15 @@ class BagSqliteRepository:
         return cursor.rowcount > 0
 
     async def activate(self, bag_id: str) -> bool:
-        exists_cursor = await self._conn.execute("SELECT 1 FROM bags WHERE id = ?", (bag_id,))
-        if await exists_cursor.fetchone() is None:
+        # Optimistic: try to set the target active first. rowcount==0 means it doesn't exist.
+        # If it does exist, deactivate any other previously-active bag in the same transaction.
+        cursor = await self._conn.execute("UPDATE bags SET is_active = 1 WHERE id = ?", (bag_id,))
+        if cursor.rowcount == 0:
             return False
-
-        await self._conn.execute("UPDATE bags SET is_active = 0 WHERE is_active = 1")
-        await self._conn.execute("UPDATE bags SET is_active = 1 WHERE id = ?", (bag_id,))
+        await self._conn.execute(
+            "UPDATE bags SET is_active = 0 WHERE id != ? AND is_active = 1",
+            (bag_id,),
+        )
         await self._conn.commit()
         return True
 
