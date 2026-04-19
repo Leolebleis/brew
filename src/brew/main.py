@@ -89,7 +89,8 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
     _wire_event_subscribers(bus, broadcaster, journal_service, bag_service, water_service)
 
-    poller = DeviceBrewingPoller(device_service=device_service, bus=bus)
+    poller_interval = float(os.getenv("FELLOW_POLLER_INTERVAL_SECONDS", "5.0"))
+    poller = DeviceBrewingPoller(device_service=device_service, bus=bus, interval_seconds=poller_interval)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
 
     app.dependency_overrides[get_device_service] = lambda: device_service

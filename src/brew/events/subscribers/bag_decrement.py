@@ -1,7 +1,7 @@
 """Decrement the journaled bag when a journal entry is created.
 
 Subscribes to JournalEntryCreated rather than BrewCompleted so manual logs
-(POST /journal) decrement the bag too — see PR #13 for the rationale.
+(POST /journal) decrement the bag too.
 """
 
 from collections.abc import Awaitable, Callable

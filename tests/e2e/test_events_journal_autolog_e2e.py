@@ -63,7 +63,7 @@ async def _read_sse_events(send_queue: asyncio.Queue, expected_types: set[str]) 
 
     collected: dict[str, dict[str, Any]] = {}
     accumulated = b""
-    async with asyncio.timeout(15.0):
+    async with asyncio.timeout(5.0):
         while len(collected) < len(expected_types):
             msg = await send_queue.get()
             if msg["type"] != "http.response.body":
@@ -98,13 +98,14 @@ async def _close_asgi_task(receive_queue: asyncio.Queue, app_task: asyncio.Task)
             await app_task
 
 
-async def test_poller_auto_logs_journal_entry_and_broadcasts(
+async def test_poller_auto_logs_journal_entry_and_broadcasts(  # noqa: PLR0915
     events_fellow_mock: Mock,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     db_path = tmp_path / "brew.db"
     monkeypatch.setenv("FELLOW_DATABASE_PATH", str(db_path))
+    monkeypatch.setenv("FELLOW_POLLER_INTERVAL_SECONDS", "0.05")
     get_settings.cache_clear()
     get_aiden_settings.cache_clear()
     monkeypatch.setattr("brew.aiden.dependencies.build_fellow_client", lambda: events_fellow_mock)

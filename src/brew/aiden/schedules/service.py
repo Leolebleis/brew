@@ -1,11 +1,7 @@
 """Schedule service — orchestrates the schedule client."""
 
-import logging
-
 from brew.aiden.schedules.client import FellowScheduleClient
 from brew.aiden.schedules.model.schedule import Schedule, ScheduleCreate, ScheduleUpdate
-
-logger = logging.getLogger(__name__)
 
 
 class ScheduleService:

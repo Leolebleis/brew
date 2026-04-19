@@ -1,10 +1,4 @@
-"""Fellow device client — protocol, HTTP implementation, mapper.
-
-Ported from:
-  - src/brew/aiden/device/facade.py (DeviceFacade)
-  - src/brew/aiden/device/client/fellow_client.py (FellowDeviceClient)
-  - src/brew/aiden/device/client/fellow_client_mapper.py (FellowDeviceMapper)
-"""
+"""Fellow device client — protocol, HTTP implementation, mapper."""
 
 import asyncio
 import logging
@@ -26,7 +20,7 @@ class FellowDeviceClient(Protocol):
     async def adjust_setting(self, settings: DeviceSettings) -> None: ...
 
 
-# ---------- Mapper (Task 9 extends this) ----------
+# ---------- Mapper ----------
 
 
 class FellowDeviceHttpMapper:

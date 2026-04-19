@@ -11,8 +11,8 @@ Approach:
   frames from the `send` queue until a JournalEntryCreated data frame appears
   (the poller's BrewCompleted event is internal-only; the auto-log subscriber
   converts it into a JournalEntryCreated that the broadcaster fans out).
-- The default poller interval is 5s; wait up to 15s for the transition detection
-  plus SSE delivery.
+- The poller interval is overridden to 50ms via FELLOW_POLLER_INTERVAL_SECONDS
+  so the transition is detected within a few hundred ms.
 """
 
 import asyncio
@@ -69,7 +69,7 @@ async def _read_sse_payload(send_queue: asyncio.Queue) -> dict[str, Any]:
     assert start["status"] == 200
 
     accumulated = b""
-    async with asyncio.timeout(15.0):
+    async with asyncio.timeout(5.0):
         while True:
             msg = await send_queue.get()
             if msg["type"] != "http.response.body":
@@ -102,6 +102,7 @@ async def test_poller_triggers_journal_entry_via_sse(
 ) -> None:
     db_path = tmp_path / "brew.db"
     monkeypatch.setenv("FELLOW_DATABASE_PATH", str(db_path))
+    monkeypatch.setenv("FELLOW_POLLER_INTERVAL_SECONDS", "0.05")
     get_settings.cache_clear()
     get_aiden_settings.cache_clear()
     monkeypatch.setattr("brew.aiden.dependencies.build_fellow_client", lambda: events_fellow_mock)
