@@ -171,7 +171,7 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(
         finally:
             await _close_asgi_task(receive_queue, app_task)
 
-        # Confirm the journal row is persisted and queryable via HTTP.
+        # Confirm the journal row is persisted and the water decrement subscriber ran.
         async with AsyncClient(transport=ASGITransport(app=asgi_app), base_url="http://test") as http:
             list_resp = await http.get("/journal")
             assert list_resp.status_code == 200
@@ -180,3 +180,8 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(
             assert entries[0]["bag_id"] == bag_id
             assert entries[0]["water_ml"] == 330
             assert entries[0]["dose_grams"] == 21
+
+            water_resp = await http.get("/water")
+            assert water_resp.status_code == 200
+            # Reservoir starts at MAX (1500 ml); the brew used 330 ml.
+            assert water_resp.json()["remaining_ml"] == 1500 - 330
