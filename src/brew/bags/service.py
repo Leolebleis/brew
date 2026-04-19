@@ -76,3 +76,16 @@ class BagService:
         if active is None:
             return
         await self._repo.set_remaining_grams(active.id, active.remaining_grams - grams)
+
+    async def decrement(self, bag_id: str, grams: int) -> None:
+        """Decrement a specific bag. Zeros + finishes it if it would hit 0.
+
+        No-op if the bag is already finished — preserves the original finished_at.
+        """
+        bag = await self.get(bag_id)
+        if bag.finished_at is not None:
+            return
+        if bag.remaining_grams - grams <= 0:
+            await self._repo.zero(bag_id)
+        else:
+            await self._repo.set_remaining_grams(bag_id, bag.remaining_grams - grams)

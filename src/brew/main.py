@@ -33,6 +33,7 @@ from brew.events.dependencies import get_event_broadcaster
 from brew.events.domain import BrewCompleted, JournalEntryCreated
 from brew.events.poller import DeviceBrewingPoller
 from brew.events.router import router as events_router
+from brew.events.subscribers.bag_decrement import make_bag_decrement_handler
 from brew.events.subscribers.journal_auto_log import make_journal_auto_log_handler
 from brew.events.subscribers.water_decrement import make_water_decrement_handler
 from brew.exception_handlers import register_exception_handlers
@@ -49,6 +50,19 @@ from brew.water.schema import WATER_SCHEMA
 from brew.water.service import WaterService
 
 logger = logging.getLogger(__name__)
+
+
+def _wire_event_subscribers(
+    bus: EventBus,
+    broadcaster: EventBroadcaster,
+    journal_service: JournalService,
+    bag_service: BagService,
+    water_service: WaterService,
+) -> None:
+    bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
+    bus.subscribe(BrewCompleted, make_journal_auto_log_handler(journal_service, bag_service))
+    bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
+    bus.subscribe(JournalEntryCreated, make_bag_decrement_handler(bag_service))
 
 
 @asynccontextmanager
@@ -72,15 +86,8 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
-    bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
-
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
-
-    bus.subscribe(
-        BrewCompleted,
-        make_journal_auto_log_handler(journal_service, bag_service),
-    )
-    bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
+    _wire_event_subscribers(bus, broadcaster, journal_service, bag_service, water_service)
 
     poller = DeviceBrewingPoller(device_service=device_service, bus=bus)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
