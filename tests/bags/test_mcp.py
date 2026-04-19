@@ -5,6 +5,7 @@ import pytest
 from fastmcp import FastMCP
 
 from brew.bags.mcp import register_bags_mcp
+from brew.errors import NotFoundError
 from tests.bags.conftest import make_bag
 
 
@@ -102,3 +103,15 @@ async def test_create_bag_tool_accepts_optional_roast_date(mcp: FastMCP, mock_se
     assert data["status"] == "created"
     create_call = mock_service.create.await_args.args[0]
     assert create_call.roast_date.isoformat() == "2026-04-10"
+
+
+async def test_get_bag_wraps_not_found_in_envelope(mcp: FastMCP, mock_service: AsyncMock) -> None:
+    """Resource handler must surface NotFoundError as the standard envelope, not a raw transport error."""
+    mock_service.get.side_effect = NotFoundError(message="Bag b99 not found", resource_kind="bag", resource_id="b99")
+
+    result = await mcp.read_resource("coffee://bags/b99")
+    data = json.loads(result.contents[0].content)
+
+    assert "error" in data
+    assert data["error"]["code"] == "not_found"
+    assert data["error"]["context"]["resource_id"] == "b99"

@@ -4,6 +4,12 @@ from dataclasses import asdict
 from fastmcp import FastMCP
 
 from brew.bags.service import BagService
+from brew.errors import DomainError
+from brew.mcp_utils import (
+    domain_error_to_resource_payload,
+    domain_error_to_tool_error,
+    jsonify,
+)
 
 
 def register_bags_mcp(mcp: FastMCP, service: BagService) -> None:
@@ -12,24 +18,33 @@ def register_bags_mcp(mcp: FastMCP, service: BagService) -> None:
         description="All bags — active and historical. Use for bean-identity matching on re-purchase.",
     )
     async def list_bags() -> str:
-        bags = await service.list()
-        return json.dumps([asdict(b) for b in bags], default=str)
+        try:
+            bags = await service.list()
+        except DomainError as e:
+            return domain_error_to_resource_payload(e)
+        return jsonify(bags)
 
     @mcp.resource(
         "coffee://bags/{bag_id}",
         description="A single bag by ID, including its profile snapshot.",
     )
     async def get_bag(bag_id: str) -> str:
-        bag = await service.get(bag_id)
-        return json.dumps(asdict(bag), default=str)
+        try:
+            bag = await service.get(bag_id)
+        except DomainError as e:
+            return domain_error_to_resource_payload(e)
+        return jsonify(bag)
 
     @mcp.resource(
         "coffee://bags/active",
         description="The currently active bag (the one in the hopper), or null if none.",
     )
     async def get_active_bag() -> str:
-        bag = await service.get_active()
-        return json.dumps(asdict(bag) if bag else None, default=str)
+        try:
+            bag = await service.get_active()
+        except DomainError as e:
+            return domain_error_to_resource_payload(e)
+        return jsonify(bag) if bag else "null"
 
     @mcp.tool(
         description=(
@@ -63,5 +78,8 @@ def register_bags_mcp(mcp: FastMCP, service: BagService) -> None:
             roast_date=_date.fromisoformat(roast_date) if roast_date else None,
             profile_id=profile_id,
         )
-        bag = await service.create(create)
+        try:
+            bag = await service.create(create)
+        except DomainError as e:
+            raise domain_error_to_tool_error(e) from e
         return json.dumps({"status": "created", "bag": asdict(bag)}, default=str)
