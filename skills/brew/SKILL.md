@@ -181,7 +181,7 @@ Truncate or sanitize before sending. Prefer `"<Roaster> <Origin>"` or `"<Roaster
 | Device offline | Create profile anyway. Skip `brew_now`. Tell the user. |
 | Wrong basket for mode | Add as ❌ on checklist. Create profile. Don't schedule. |
 | Fellow cloud 400 | Surface the upstream `message` array verbatim. Common cause: `profile_type ≠ 0` with pulse fields set. |
-| READY time < duration | Push to the min safe time and tell the user the delta. |
+| READY time < duration (`create_schedule` only) | Push to the min safe time and tell the user the delta. `brew_now` enforces this server-side, so this case only arises when the user is constructing a recurring or scheduled-for-later schedule by hand. |
 
 ## Out of scope (v1)
 
