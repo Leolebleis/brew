@@ -2,8 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Response
 
-from brew.aiden.schedules.dependencies import get_schedule_service
-from brew.aiden.schedules.mapper import ScheduleMapper
+from brew.aiden.schedules.brew_now import BrewNowService
+from brew.aiden.schedules.dependencies import get_brew_now_service, get_schedule_service
+from brew.aiden.schedules.mapper import BrewNowMapper, ScheduleMapper
+from brew.aiden.schedules.model.api.brew_now_models import BrewNowAPIRequest, BrewNowAPIResponse
 from brew.aiden.schedules.model.api.requests import ScheduleCreateAPIRequest, ScheduleUpdateAPIRequest
 from brew.aiden.schedules.model.api.responses import ScheduleAPIResponse
 from brew.aiden.schedules.service import ScheduleService
@@ -47,3 +49,16 @@ async def delete_schedule(
 ) -> Response:
     await service.delete_schedule(schedule_id)
     return Response(status_code=204)
+
+
+@router.post("/brew-now", status_code=201)
+async def brew_now(
+    request: BrewNowAPIRequest,
+    service: Annotated[BrewNowService, Depends(get_brew_now_service)],
+) -> BrewNowAPIResponse:
+    result = await service.brew_now(
+        profile_id=request.profile_id,
+        water_ml=request.water_ml,
+        extra_delay_seconds=request.extra_delay_seconds,
+    )
+    return BrewNowMapper.to_api_response(result)

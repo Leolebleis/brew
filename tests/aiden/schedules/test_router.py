@@ -1,9 +1,11 @@
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 
-from brew.aiden.schedules.dependencies import get_schedule_service
+from brew.aiden.schedules.dependencies import get_brew_now_service, get_schedule_service
+from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
 from brew.errors import CloudUnreachableError, NotFoundError, ValidationError
 from brew.main import app
@@ -127,3 +129,82 @@ async def test_delete_schedule_returns_404_on_not_found(client: AsyncClient, moc
     response = await client.delete("/schedules/s0")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
+
+
+SAMPLE_BREW_NOW = BrewNowResult(
+    schedule_id="s6",
+    profile_id="p3",
+    water_ml=400,
+    ready_at_seconds=53820,
+    ready_at_local="14:57",
+    ready_at_utc=datetime(2026, 4, 28, 13, 57, tzinfo=UTC),
+    duration_estimate_seconds=360,
+    device_timezone="Europe/London",
+)
+
+
+@pytest.fixture
+def mock_brew_now_service() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture(autouse=True)
+def _override_brew_now_service(mock_brew_now_service: AsyncMock) -> None:
+    app.dependency_overrides[get_brew_now_service] = lambda: mock_brew_now_service
+    yield
+    app.dependency_overrides.pop(get_brew_now_service, None)
+
+
+async def test_brew_now_returns_201(client: AsyncClient, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.return_value = SAMPLE_BREW_NOW
+    response = await client.post(
+        "/schedules/brew-now",
+        json={"profile_id": "p3", "water_ml": 400},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["schedule_id"] == "s6"
+    assert body["ready_at_local"] == "14:57"
+    assert body["device_timezone"] == "Europe/London"
+
+
+async def test_brew_now_passes_extra_delay(client: AsyncClient, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.return_value = SAMPLE_BREW_NOW
+    await client.post(
+        "/schedules/brew-now",
+        json={"profile_id": "p3", "water_ml": 400, "extra_delay_seconds": 120},
+    )
+    mock_brew_now_service.brew_now.assert_awaited_once_with(profile_id="p3", water_ml=400, extra_delay_seconds=120)
+
+
+async def test_brew_now_returns_404_when_profile_missing(client: AsyncClient, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.side_effect = NotFoundError.for_resource("profile", "p99")
+    response = await client.post(
+        "/schedules/brew-now",
+        json={"profile_id": "p99", "water_ml": 400},
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "not_found"
+
+
+async def test_brew_now_returns_400_on_validation(client: AsyncClient, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.side_effect = ValidationError(
+        message="profile incomplete", reason="profile_incomplete_for_mode"
+    )
+    response = await client.post(
+        "/schedules/brew-now",
+        json={"profile_id": "p3", "water_ml": 400},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "validation"
+
+
+async def test_brew_now_returns_503_on_cloud_error(client: AsyncClient, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.side_effect = CloudUnreachableError(
+        message="Fellow cloud unavailable", original="ConnectionError"
+    )
+    response = await client.post(
+        "/schedules/brew-now",
+        json={"profile_id": "p3", "water_ml": 400},
+    )
+    assert response.status_code == 503
