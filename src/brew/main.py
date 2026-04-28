@@ -3,8 +3,12 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
+from typing import TYPE_CHECKING
 
 from fastapi import Depends, FastAPI, Request
+
+if TYPE_CHECKING:
+    import aiosqlite
 from fastapi.responses import JSONResponse
 
 from brew.aiden.dependencies import build_fellow_client, get_aiden_settings
@@ -66,6 +70,61 @@ def _wire_event_subscribers(
     bus.subscribe(JournalEntryCreated, make_bag_decrement_handler(bag_service))
 
 
+def _register_aiden_mcp(
+    device_service: DeviceService,
+    profile_service: ProfileService,
+    schedule_service: ScheduleService,
+    brew_now_service: BrewNowService,
+) -> None:
+    from brew.aiden.device.mcp import register_device_mcp  # noqa: PLC0415
+    from brew.aiden.profiles.mcp import register_profile_mcp  # noqa: PLC0415
+    from brew.aiden.schedules.mcp import register_brew_now_mcp, register_schedule_mcp  # noqa: PLC0415
+
+    register_device_mcp(_mcp_server, device_service)
+    register_profile_mcp(_mcp_server, profile_service)
+    register_schedule_mcp(_mcp_server, schedule_service)
+    register_brew_now_mcp(_mcp_server, brew_now_service)
+
+
+def _register_domain_mcp(
+    water_service: WaterService,
+    bag_service: BagService,
+    journal_service: JournalService,
+) -> None:
+    from brew.bags.mcp import register_bags_mcp  # noqa: PLC0415
+    from brew.journal.mcp import register_journal_mcp  # noqa: PLC0415
+    from brew.water.mcp import register_water_mcp  # noqa: PLC0415
+
+    register_water_mcp(_mcp_server, water_service)
+    register_bags_mcp(_mcp_server, bag_service)
+    register_journal_mcp(_mcp_server, journal_service)
+
+
+async def _wire_chat(
+    app: FastAPI,
+    db_conn: "aiosqlite.Connection",
+    journal_service: JournalService,
+    bag_service: BagService,
+) -> None:
+    from brew.chat.agent import build_chat_agent  # noqa: PLC0415
+    from brew.chat.config import get_chat_settings  # noqa: PLC0415
+    from brew.chat.dependencies import get_chat_service  # noqa: PLC0415
+    from brew.chat.repository import ChatSqliteRepository  # noqa: PLC0415
+    from brew.chat.schema import CHAT_SCHEMA  # noqa: PLC0415
+    from brew.chat.service import ChatService  # noqa: PLC0415
+
+    await init_db(db_conn, [CHAT_SCHEMA])
+    chat_settings = get_chat_settings()
+    chat_agent = build_chat_agent(
+        settings=chat_settings,
+        mcp_server=_mcp_server,
+        journal_service=journal_service,
+        bag_service=bag_service,
+    )
+    chat_service = ChatService(repo=ChatSqliteRepository(conn=db_conn), agent=chat_agent)
+    app.dependency_overrides[get_chat_service] = lambda: chat_service
+
+
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
@@ -113,20 +172,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     if _mcp_enabled:
-        from brew.aiden.device.mcp import register_device_mcp  # noqa: PLC0415
-        from brew.aiden.profiles.mcp import register_profile_mcp  # noqa: PLC0415
-        from brew.aiden.schedules.mcp import register_brew_now_mcp, register_schedule_mcp  # noqa: PLC0415
-        from brew.bags.mcp import register_bags_mcp  # noqa: PLC0415
-        from brew.journal.mcp import register_journal_mcp  # noqa: PLC0415
-        from brew.water.mcp import register_water_mcp  # noqa: PLC0415
+        _register_aiden_mcp(device_service, profile_service, schedule_service, brew_now_service)
+        _register_domain_mcp(water_service, bag_service, journal_service)
 
-        register_device_mcp(_mcp_server, device_service)
-        register_profile_mcp(_mcp_server, profile_service)
-        register_schedule_mcp(_mcp_server, schedule_service)
-        register_brew_now_mcp(_mcp_server, brew_now_service)
-        register_water_mcp(_mcp_server, water_service)
-        register_bags_mcp(_mcp_server, bag_service)
-        register_journal_mcp(_mcp_server, journal_service)
+    if _chat_enabled and _mcp_enabled:
+        await _wire_chat(app, db_conn, journal_service, bag_service)
 
     try:
         yield
@@ -171,6 +221,7 @@ app.include_router(events_router, dependencies=[Depends(require_api_key)])
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
 _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
+_chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
 
 if _mcp_enabled:
     from fastmcp import FastMCP as _FastMCP
