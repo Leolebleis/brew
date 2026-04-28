@@ -4,6 +4,7 @@ from dataclasses import asdict
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from brew.aiden.schedules.brew_now import BrewNowService
 from brew.aiden.schedules.model.schedule import ScheduleCreate, ScheduleUpdate
 from brew.aiden.schedules.service import ScheduleService
 from brew.errors import DomainError
@@ -33,8 +34,9 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
             "time_seconds is seconds-since-midnight in the device's local timezone (NOT UTC). "
             "Check `coffee://device` for the deviceTimezone field. "
             "IMPORTANT: time_seconds is the READY time (when the brew finishes), not the start time. "
-            "Set it at least ~7 min in the future for batch brews and ~4 min for single-serve, "
-            "or the device will silently skip the schedule."
+            "Empirical floors: ≥ 8 min for batch, ≥ 6 min for single-serve. "
+            "If READY is too close to now, the device silently skips the schedule. "
+            "For one-shot 'right now' brews, prefer `brew_now` — it does duration + tz math server-side."
         ),
     )
     async def create_schedule(
@@ -95,3 +97,30 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
         except DomainError as e:
             raise domain_error_to_tool_error(e) from e
         return f"Schedule '{schedule_id}' deleted."
+
+
+def register_brew_now_mcp(mcp: FastMCP, service: BrewNowService) -> None:
+    @mcp.tool(
+        description=(
+            "Schedule a one-shot brew RIGHT NOW with the given profile and volume. "
+            "Server estimates the brew duration from the profile, reads the device's "
+            "timezone, and computes the earliest feasible READY time — caller does no "
+            "time math. Use this instead of `create_schedule` for the 'brew now' use case. "
+            "Pass `extra_delay_seconds` to push the brew further out (e.g. 600 for ~10 min from now). "
+            "Returns the schedule id and a human-readable ready_at_local (HH:MM)."
+        ),
+    )
+    async def brew_now(
+        profile_id: str,
+        water_ml: int,
+        extra_delay_seconds: int = 0,
+    ) -> str:
+        try:
+            result = await service.brew_now(
+                profile_id=profile_id,
+                water_ml=water_ml,
+                extra_delay_seconds=extra_delay_seconds,
+            )
+        except DomainError as e:
+            raise domain_error_to_tool_error(e) from e
+        return json.dumps({"status": "scheduled", "result": asdict(result)}, default=str)

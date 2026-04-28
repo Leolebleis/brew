@@ -41,8 +41,8 @@ No binary `*Outcome` enums.
 ## Key constraints
 
 - Fellow cloud API only — no local/LAN API
-- `brew_now` removed (Task 5 of domain refresh); schedules are the only remote-brew path
-- Schedules must be set in device-local timezone, READY-time ≥ brew duration (~7 min for batch, ~4 min for single-serve); `days` all-false = one-time brew at next occurrence, any True = recurring on that weekday
+- Two remote-brew paths: `brew_now(profile_id, water_ml)` for one-shot "right now" brews (server does duration + tz math), and `create_schedule` for recurring or scheduled-for-later brews
+- Schedules must be set in device-local timezone, READY-time ≥ brew duration (empirical floors: 8 min batch, 6 min single-serve — the device silently skips schedules with insufficient lead time); `days` all-false = one-time brew at next occurrence, any True = recurring on that weekday
 - `fellow-aiden` installed from GitHub master (not PyPI) — PyPI 0.2.2 has a known bug where `__device()` crashes on missing profiles/schedules keys (fixed in PR #20, never published)
 - Aiden connects via 2.4 GHz WiFi only
 
