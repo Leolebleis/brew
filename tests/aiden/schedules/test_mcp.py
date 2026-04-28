@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
@@ -7,9 +6,9 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from brew.aiden.schedules.mcp import register_brew_now_mcp, register_schedule_mcp
-from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
 from brew.errors import CloudUnreachableError, NotFoundError, ValidationError
+from tests.aiden.schedules.conftest import SAMPLE_BREW_NOW
 
 _SAMPLE_SCHEDULE = Schedule(
     id="s1",
@@ -140,18 +139,6 @@ def mcp_with_brew_now(mock_brew_now_service: AsyncMock) -> FastMCP:
     mcp = FastMCP("test")
     register_brew_now_mcp(mcp, mock_brew_now_service)
     return mcp
-
-
-SAMPLE_BREW_NOW = BrewNowResult(
-    schedule_id="s6",
-    profile_id="p3",
-    water_ml=400,
-    ready_at_seconds=53820,
-    ready_at_local="14:57",
-    ready_at_utc=datetime(2026, 4, 28, 13, 57, tzinfo=UTC),
-    duration_estimate_seconds=360,
-    device_timezone="Europe/London",
-)
 
 
 async def test_brew_now_tool_returns_envelope(mcp_with_brew_now: FastMCP, mock_brew_now_service: AsyncMock) -> None:

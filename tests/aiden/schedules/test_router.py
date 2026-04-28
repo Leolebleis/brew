@@ -1,14 +1,13 @@
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 
 from brew.aiden.schedules.dependencies import get_brew_now_service, get_schedule_service
-from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
 from brew.errors import CloudUnreachableError, NotFoundError, ValidationError
 from brew.main import app
+from tests.aiden.schedules.conftest import SAMPLE_BREW_NOW
 
 SAMPLE_SCHEDULE = Schedule(
     id="s0",
@@ -129,18 +128,6 @@ async def test_delete_schedule_returns_404_on_not_found(client: AsyncClient, moc
     response = await client.delete("/schedules/s0")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
-
-
-SAMPLE_BREW_NOW = BrewNowResult(
-    schedule_id="s6",
-    profile_id="p3",
-    water_ml=400,
-    ready_at_seconds=53820,
-    ready_at_local="14:57",
-    ready_at_utc=datetime(2026, 4, 28, 13, 57, tzinfo=UTC),
-    duration_estimate_seconds=360,
-    device_timezone="Europe/London",
-)
 
 
 @pytest.fixture

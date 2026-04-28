@@ -4,54 +4,11 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from brew.aiden.device.model.device import Device
 from brew.aiden.schedules.brew_now import BrewNowService
-from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
 from brew.errors import NotFoundError, ValidationError
+from tests.aiden.device.conftest import make_device
 from tests.aiden.profiles.conftest import make_profile
-
-
-def test_brew_now_result_has_required_fields() -> None:
-    result = BrewNowResult(
-        schedule_id="s6",
-        profile_id="p3",
-        water_ml=400,
-        ready_at_seconds=53820,
-        ready_at_local="14:57",
-        ready_at_utc=datetime(2026, 4, 28, 13, 57, tzinfo=UTC),
-        duration_estimate_seconds=360,
-        device_timezone="Europe/London",
-    )
-    assert result.schedule_id == "s6"
-    assert result.duration_estimate_seconds == 360
-
-
-def _device(tz: str = "GB-Eire") -> Device:
-    return Device(
-        brewer_id="FB_test",
-        display_name="Aiden",
-        firmware_version="1.4.21",
-        serial_number="x",
-        sku="EBRMB-UK",
-        is_connected=True,
-        device_timezone=tz,
-        total_water_volume_l=0,
-        brewing=False,
-        brew_start_time=0,
-        brew_end_time=0,
-        brewing_profile_id=None,
-        pump_on=False,
-        heater_on=False,
-        cleaning=False,
-        rinsing=False,
-        missing_water=False,
-        carafe_present=True,
-        lid_closed=True,
-        single_brew_basket_present=True,
-        batch_brew_basket_present=False,
-        shower_head_present=True,
-    )
 
 
 @pytest.fixture
@@ -81,7 +38,7 @@ async def test_brew_now_single_serve_schedules_at_now_plus_duration_plus_buffer(
         ss_pulses_interval=25,
     )
     mock_profile_service.get_profile.return_value = profile
-    mock_device_service.get_device.return_value = _device("GB-Eire")
+    mock_device_service.get_device.return_value = make_device(device_timezone="GB-Eire")
     mock_schedule_service.create_schedule.return_value = Schedule(
         id="s6",
         days=[False] * 7,
@@ -130,7 +87,7 @@ async def test_brew_now_batch_uses_batch_floor_when_water_above_500ml(
         batch_pulses_interval=30,
     )
     mock_profile_service.get_profile.return_value = profile
-    mock_device_service.get_device.return_value = _device("GB-Eire")
+    mock_device_service.get_device.return_value = make_device(device_timezone="GB-Eire")
     mock_schedule_service.create_schedule.return_value = Schedule(
         id="s7",
         days=[False] * 7,
@@ -167,7 +124,7 @@ async def test_brew_now_extra_delay_pushes_ready_time_further_out(
         ss_pulses_interval=25,
     )
     mock_profile_service.get_profile.return_value = profile
-    mock_device_service.get_device.return_value = _device("GB-Eire")
+    mock_device_service.get_device.return_value = make_device(device_timezone="GB-Eire")
     mock_schedule_service.create_schedule.return_value = Schedule(
         id="s8",
         days=[False] * 7,
@@ -219,7 +176,7 @@ async def test_brew_now_raises_validation_when_profile_incomplete(
 ) -> None:
     incomplete = make_profile(ss_pulses_number=None)
     mock_profile_service.get_profile.return_value = incomplete
-    mock_device_service.get_device.return_value = _device("GB-Eire")
+    mock_device_service.get_device.return_value = make_device(device_timezone="GB-Eire")
 
     service = BrewNowService(
         schedule_service=mock_schedule_service,
@@ -245,7 +202,7 @@ async def test_brew_now_raises_validation_for_unknown_timezone(
         ss_pulses_interval=25,
     )
     mock_profile_service.get_profile.return_value = profile
-    mock_device_service.get_device.return_value = _device("Mars/Olympus")
+    mock_device_service.get_device.return_value = make_device(device_timezone="Mars/Olympus")
 
     service = BrewNowService(
         schedule_service=mock_schedule_service,

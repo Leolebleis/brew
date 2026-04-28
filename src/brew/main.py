@@ -53,27 +53,6 @@ from brew.water.service import WaterService
 logger = logging.getLogger(__name__)
 
 
-def _wire_dependency_overrides(  # noqa: PLR0913
-    app: FastAPI,
-    device_service: DeviceService,
-    profile_service: ProfileService,
-    schedule_service: ScheduleService,
-    brew_now_service: BrewNowService,
-    water_service: WaterService,
-    bag_service: BagService,
-    journal_service: JournalService,
-    broadcaster: EventBroadcaster,
-) -> None:
-    app.dependency_overrides[get_device_service] = lambda: device_service
-    app.dependency_overrides[get_profile_service] = lambda: profile_service
-    app.dependency_overrides[get_schedule_service] = lambda: schedule_service
-    app.dependency_overrides[get_brew_now_service] = lambda: brew_now_service
-    app.dependency_overrides[get_water_service] = lambda: water_service
-    app.dependency_overrides[get_bag_service] = lambda: bag_service
-    app.dependency_overrides[get_journal_service] = lambda: journal_service
-    app.dependency_overrides[get_event_broadcaster] = lambda: broadcaster
-
-
 def _wire_event_subscribers(
     bus: EventBus,
     broadcaster: EventBroadcaster,
@@ -120,16 +99,17 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     poller = DeviceBrewingPoller(device_service=device_service, bus=bus, interval_seconds=poller_interval)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
 
-    _wire_dependency_overrides(
-        app,
-        device_service=device_service,
-        profile_service=profile_service,
-        schedule_service=schedule_service,
-        brew_now_service=brew_now_service,
-        water_service=water_service,
-        bag_service=bag_service,
-        journal_service=journal_service,
-        broadcaster=broadcaster,
+    app.dependency_overrides.update(
+        {
+            get_device_service: lambda: device_service,
+            get_profile_service: lambda: profile_service,
+            get_schedule_service: lambda: schedule_service,
+            get_brew_now_service: lambda: brew_now_service,
+            get_water_service: lambda: water_service,
+            get_bag_service: lambda: bag_service,
+            get_journal_service: lambda: journal_service,
+            get_event_broadcaster: lambda: broadcaster,
+        }
     )
 
     if _mcp_enabled:

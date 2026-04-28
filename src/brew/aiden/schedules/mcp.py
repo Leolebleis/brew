@@ -34,8 +34,9 @@ def register_schedule_mcp(mcp: FastMCP, service: ScheduleService) -> None:
             "time_seconds is seconds-since-midnight in the device's local timezone (NOT UTC). "
             "Check `coffee://device` for the deviceTimezone field. "
             "IMPORTANT: time_seconds is the READY time (when the brew finishes), not the start time. "
-            "Set it at least ~7 min in the future for batch brews and ~4 min for single-serve, "
-            "or the device will silently skip the schedule."
+            "Empirical floors: ≥ 8 min for batch, ≥ 6 min for single-serve. "
+            "If READY is too close to now, the device silently skips the schedule. "
+            "For one-shot 'right now' brews, prefer `brew_now` — it does duration + tz math server-side."
         ),
     )
     async def create_schedule(
@@ -105,6 +106,7 @@ def register_brew_now_mcp(mcp: FastMCP, service: BrewNowService) -> None:
             "Server estimates the brew duration from the profile, reads the device's "
             "timezone, and computes the earliest feasible READY time — caller does no "
             "time math. Use this instead of `create_schedule` for the 'brew now' use case. "
+            "Pass `extra_delay_seconds` to push the brew further out (e.g. 600 for ~10 min from now). "
             "Returns the schedule id and a human-readable ready_at_local (HH:MM)."
         ),
     )

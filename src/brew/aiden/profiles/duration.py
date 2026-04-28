@@ -23,6 +23,9 @@ _BATCH_FLOOR_S = 480
 _SS_TAIL_S = 180
 _BATCH_TAIL_S = 240
 
+# Volume boundary between single-serve and batch (per /brew skill — hard cutoff).
+SINGLE_SERVE_MAX_ML = 500
+
 
 class BrewMode(StrEnum):
     SINGLE_SERVE = "single_serve"
