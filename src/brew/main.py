@@ -16,8 +16,9 @@ from brew.aiden.profiles.client import FellowProfileHttpClient
 from brew.aiden.profiles.dependencies import get_profile_service
 from brew.aiden.profiles.router import router as profiles_router
 from brew.aiden.profiles.service import ProfileService
+from brew.aiden.schedules.brew_now import BrewNowService
 from brew.aiden.schedules.client import FellowScheduleHttpClient
-from brew.aiden.schedules.dependencies import get_schedule_service
+from brew.aiden.schedules.dependencies import get_brew_now_service, get_schedule_service
 from brew.aiden.schedules.router import router as schedules_router
 from brew.aiden.schedules.service import ScheduleService
 from brew.bags.dependencies import get_bag_service
@@ -52,6 +53,27 @@ from brew.water.service import WaterService
 logger = logging.getLogger(__name__)
 
 
+def _wire_dependency_overrides(  # noqa: PLR0913
+    app: FastAPI,
+    device_service: DeviceService,
+    profile_service: ProfileService,
+    schedule_service: ScheduleService,
+    brew_now_service: BrewNowService,
+    water_service: WaterService,
+    bag_service: BagService,
+    journal_service: JournalService,
+    broadcaster: EventBroadcaster,
+) -> None:
+    app.dependency_overrides[get_device_service] = lambda: device_service
+    app.dependency_overrides[get_profile_service] = lambda: profile_service
+    app.dependency_overrides[get_schedule_service] = lambda: schedule_service
+    app.dependency_overrides[get_brew_now_service] = lambda: brew_now_service
+    app.dependency_overrides[get_water_service] = lambda: water_service
+    app.dependency_overrides[get_bag_service] = lambda: bag_service
+    app.dependency_overrides[get_journal_service] = lambda: journal_service
+    app.dependency_overrides[get_event_broadcaster] = lambda: broadcaster
+
+
 def _wire_event_subscribers(
     bus: EventBus,
     broadcaster: EventBroadcaster,
@@ -78,6 +100,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     device_service = DeviceService(client=device_client)
     profile_service = ProfileService(client=profile_client)
     schedule_service = ScheduleService(client=schedule_client)
+    brew_now_service = BrewNowService(
+        schedule_service=schedule_service,
+        profile_service=profile_service,
+        device_service=device_service,
+    )
 
     db_conn = await open_db(settings.database_path)
     await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
@@ -93,18 +120,22 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     poller = DeviceBrewingPoller(device_service=device_service, bus=bus, interval_seconds=poller_interval)
     poller_task = asyncio.create_task(poller.run(), name="device-brewing-poller")
 
-    app.dependency_overrides[get_device_service] = lambda: device_service
-    app.dependency_overrides[get_profile_service] = lambda: profile_service
-    app.dependency_overrides[get_schedule_service] = lambda: schedule_service
-    app.dependency_overrides[get_water_service] = lambda: water_service
-    app.dependency_overrides[get_bag_service] = lambda: bag_service
-    app.dependency_overrides[get_journal_service] = lambda: journal_service
-    app.dependency_overrides[get_event_broadcaster] = lambda: broadcaster
+    _wire_dependency_overrides(
+        app,
+        device_service=device_service,
+        profile_service=profile_service,
+        schedule_service=schedule_service,
+        brew_now_service=brew_now_service,
+        water_service=water_service,
+        bag_service=bag_service,
+        journal_service=journal_service,
+        broadcaster=broadcaster,
+    )
 
     if _mcp_enabled:
         from brew.aiden.device.mcp import register_device_mcp  # noqa: PLC0415
         from brew.aiden.profiles.mcp import register_profile_mcp  # noqa: PLC0415
-        from brew.aiden.schedules.mcp import register_schedule_mcp  # noqa: PLC0415
+        from brew.aiden.schedules.mcp import register_brew_now_mcp, register_schedule_mcp  # noqa: PLC0415
         from brew.bags.mcp import register_bags_mcp  # noqa: PLC0415
         from brew.journal.mcp import register_journal_mcp  # noqa: PLC0415
         from brew.water.mcp import register_water_mcp  # noqa: PLC0415
@@ -112,6 +143,7 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
         register_device_mcp(_mcp_server, device_service)
         register_profile_mcp(_mcp_server, profile_service)
         register_schedule_mcp(_mcp_server, schedule_service)
+        register_brew_now_mcp(_mcp_server, brew_now_service)
         register_water_mcp(_mcp_server, water_service)
         register_bags_mcp(_mcp_server, bag_service)
         register_journal_mcp(_mcp_server, journal_service)
