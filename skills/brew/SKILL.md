@@ -1,6 +1,6 @@
 ---
 name: brew
-description: Use when the user wants to brew coffee on a Fellow Aiden — they'll name beans (brand, origin, roast) and a target volume, optionally share a photo of the bag. Covers profile creation, pre-brew checklist, Ode Gen 1 grind recommendation, and optional one-time "brew now" schedule. Also triggers on `/brew`.
+description: Use when the user wants to brew coffee on a Fellow Aiden — they'll name beans (brand, origin, roast) and a target volume, optionally share a photo of the bag. Covers existing-profile lookup, profile creation, pre-brew checklist, Ode Gen 2 grind recommendation, and one-shot "brew now" scheduling. Also triggers on `/brew`.
 ---
 
 # `/brew` — brew a bag on the Fellow Aiden
@@ -26,12 +26,13 @@ Ask for anything missing — don't guess origin or roast.
 
 1. **Identify** bean + volume.
 2. **Pick mode**: `volume ≤ 500 ml → single-serve`, `> 500 ml → batch`. **Hard cutoff at 500 ml.**
-3. **Pick a template drop** from `coffee://profiles` using the decision tree in `references/profile-heuristics.md`. Clone its params.
-4. **Apply roast-delta nudge** if the bean is lighter/darker than the template.
-5. **Read device state** via `coffee://device`.
-6. **Create profile** via `mcp__brew__create_profile` (new title, cloned params).
-7. **Render the brew plan**.
-8. **Optional brew_now**: if user confirms, create a one-time schedule.
+3. **Check `coffee://profiles` for an existing user profile** matching the bag. Match on roaster + coffee name substring (e.g. "OJ" + "Brazil", or "Intermission" + "Top of Morning"). User profiles live in folder `Custom`. If a match exists, **reuse it** — skip steps 4–7 and tell the user. Only fall through if no match is found OR the user explicitly asks for a fresh profile.
+4. **Pick a template drop** from `coffee://profiles` using the decision tree in `references/profile-heuristics.md`. Clone its params.
+5. **Apply roast-delta nudge** if the bean is lighter/darker than the template.
+6. **Read device state** via `coffee://device`.
+7. **Create profile** via `mcp__brew__create_profile` (new title, cloned params).
+8. **Render the brew plan**.
+9. **brew_now**: when the user says "brew now" / "go" / "do it", call `mcp__brew__brew_now(profile_id, water_ml)` immediately. The server estimates duration, reads the device tz, and computes the READY time — show the returned `ready_at_local` to the user. No second confirmation, no time math.
 
 ## Non-negotiable MCP values
 
@@ -77,16 +78,20 @@ Fetch the template at invocation time via `coffee://profiles` — don't hardcode
 
 Pulse arrays from the template stay the same length (keeps the flat vs descending idiom intact).
 
-## Ode Gen 1 grind
+## Ode Gen 2 grind
 
-Scale 1–11, lower = finer.
+Scale 1.0–11.2 (sub-steps .0/.1/.2), lower = finer. Numbers calibrated for Gen 2 burrs.
 
 | Mode | Light | Medium | Dark |
 |---|---|---|---|
-| Single-serve | 4 | 5 | 6 |
-| Batch | 5 | 5 | 6 |
+| Single-serve | 5 | 6 | 7 |
+| Batch | 7 | 7 | 8 |
 
-Surface a single integer + one-word descriptor in the brew plan.
+If the user has Fellow Drop guidance for the *exact* bean (often shows a range like "5.1–6.1"), prefer that range's midpoint over this table.
+
+Tasting feedback: sour/thin → 1 step finer. Bitter/dry → 1 step coarser.
+
+Surface a single integer + one-word descriptor in the brew plan. **Do NOT translate from Gen 1 — these are Gen 2 numbers.**
 
 ## Pre-brew checklist sources
 
@@ -116,7 +121,7 @@ Always include these three **manual** items — the API can't verify them:
 ╚═══════════════════════════════════════════╝
 
 ▸ Dose:           <DOSE> g  (<VOLUME> ml ÷ <RATIO>)
-▸ Grind (Ode 1):  <GRIND>   (<DESCRIPTOR>)
+▸ Grind (Ode 2):  <GRIND>   (<DESCRIPTOR>)
 ▸ Ratio:          1 : <RATIO>
 ▸ Bloom:          <BLOOM_DURATION> s @ <BLOOM_TEMP> °C  (<BLOOM_RATIO>× ratio)
 ▸ Pulses:         <N> × <INTERVAL> s @ <TEMP> °C
@@ -147,50 +152,16 @@ Descriptor table for grind:
 
 ## Brew_now scheduling
 
-Only when the user confirms. Semantics:
+Call `mcp__brew__brew_now(profile_id, water_ml)` when the user confirms with "brew now" / "go" / "do it". The server handles all of:
 
-- `time_seconds` = **READY time** (when the brew finishes), **seconds-since-midnight** in the device's local tz (read from `coffee://device.deviceTimezone`, NOT UTC).
-- `days` = 7-element bool array, **Sunday=0**. All-false = one-time brew at the next occurrence of that time.
-- `water_ml` = target volume.
-- `profile_id` = the profile you just created.
+- duration estimation from the profile,
+- device-local timezone resolution (Fellow aliases like `GB-Eire` → `Europe/London`),
+- safety buffer + round-up to the next whole minute,
+- conversion to seconds-since-midnight for Fellow's API.
 
-**Duration floors** (empirical, 2026-04-13): single-serve ≥ **6 min**, batch ≥ **8 min**. The Aiden spends ~2 min pre-heating water before bloom starts — the CLAUDE.md "4 min / 7 min" figures are extraction-only estimates and undercount the full end-to-end cycle. If READY-time is too close to now, the device silently skips the schedule.
+Returns `{schedule_id, ready_at_local: "HH:MM", duration_estimate_seconds, device_timezone, ...}`. Show `ready_at_local` to the user. Done.
 
-### Estimation formula
-
-```
-ss_duration    = max(360, bloom_duration + ss_pulses_number    * ss_pulses_interval    + 180)
-batch_duration = max(480, bloom_duration + batch_pulses_number * batch_pulses_interval + 240)
-```
-
-The 180 s / 240 s tail covers pre-heat + per-pulse pour time + drawdown. Floors (360 / 480) are the observed minimums even when the maths comes in lower.
-
-Then: `ready_local_seconds = (now_in_device_tz_seconds + duration + 60) rounded up to next whole minute`.
-
-### Time-zone math pitfall
-
-The schedule's `time_seconds` is **device-local**, not UTC. If `deviceTimezone = GB-Eire` and the current UTC hour is 08:22, the local time is 09:22 BST. Compute:
-
-```python
-from zoneinfo import ZoneInfo
-from datetime import datetime, timedelta
-import math
-
-tz_name = device["deviceTimezone"]          # e.g. "GB-Eire"
-# Map quirky Fellow tz aliases to IANA if needed
-tz = ZoneInfo({"GB-Eire": "Europe/London"}.get(tz_name, tz_name))
-
-now_local = datetime.now(tz)
-ready_local = now_local + timedelta(seconds=duration + 60)
-
-# Round up to the next whole minute — always, even if already on the minute,
-# so we never accidentally schedule in the past after any sub-second drift.
-ready_local = (ready_local + timedelta(minutes=1)).replace(second=0, microsecond=0)
-
-time_seconds = ready_local.hour * 3600 + ready_local.minute * 60
-```
-
-(Do the math inline in the response — don't make the user do it.)
+Use `mcp__brew__create_schedule` only for **recurring** schedules (any `days[i]=true`) or **scheduled-for-later** brews — that path is unchanged and still requires explicit `time_seconds`.
 
 ## Profile title rules
 
@@ -225,7 +196,11 @@ These are planned for v2 in a `journal` bounded context inside `brew/src/brew/jo
 
 - About to pass `profile_type=1` with pulse fields → **stop**, use `0`.
 - About to use °F → **stop**, Fellow is °C only.
-- About to schedule with `time_seconds` < current device-local seconds + duration → **stop**, the device will silently skip it.
 - Guessing origin or roast from a bag → **stop**, ask the user.
 - Using a 300 ml single/batch cutoff → **stop**, cutoff is **500 ml**.
 - Inventing pulse temps / ratios from nothing → **stop**, clone a Fellow drop via `coffee://profiles` first.
+- About to ask the user for bean origin/roast without first checking `coffee://profiles` for an existing match → **stop**, check first.
+- About to translate Gen 1 grind numbers to Gen 2 → **stop**, the table is already Gen 2.
+- About to recommend a grind below 4 on a light single-serve → **stop**, real-world consensus is 4–6 for light SS.
+- User said "brew now" and you've not yet called `mcp__brew__brew_now` → **stop**, just call it.
+- Computing `time_seconds` yourself for a "brew now" request → **stop**, that's `brew_now`'s job.
