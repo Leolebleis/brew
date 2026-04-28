@@ -1,11 +1,13 @@
 import json
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
-from brew.aiden.schedules.mcp import register_schedule_mcp
+from brew.aiden.schedules.mcp import register_brew_now_mcp, register_schedule_mcp
+from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
 from brew.errors import CloudUnreachableError, NotFoundError, ValidationError
 
@@ -126,3 +128,74 @@ async def test_delete_schedule_raises_tool_error_on_not_found(mcp: FastMCP, mock
         await mcp.call_tool("delete_schedule", {"schedule_id": "s1"})
     data = json.loads(str(exc_info.value))
     assert data["error"]["code"] == "not_found"
+
+
+@pytest.fixture
+def mock_brew_now_service() -> AsyncMock:
+    return AsyncMock()
+
+
+@pytest.fixture
+def mcp_with_brew_now(mock_brew_now_service: AsyncMock) -> FastMCP:
+    mcp = FastMCP("test")
+    register_brew_now_mcp(mcp, mock_brew_now_service)
+    return mcp
+
+
+SAMPLE_BREW_NOW = BrewNowResult(
+    schedule_id="s6",
+    profile_id="p3",
+    water_ml=400,
+    ready_at_seconds=53820,
+    ready_at_local="14:57",
+    ready_at_utc=datetime(2026, 4, 28, 13, 57, tzinfo=UTC),
+    duration_estimate_seconds=360,
+    device_timezone="Europe/London",
+)
+
+
+async def test_brew_now_tool_returns_envelope(mcp_with_brew_now: FastMCP, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.return_value = SAMPLE_BREW_NOW
+    result = await mcp_with_brew_now.call_tool(
+        "brew_now",
+        {"profile_id": "p3", "water_ml": 400},
+    )
+    body = json.loads(result.content[0].text)
+    assert body["status"] == "scheduled"
+    assert body["result"]["schedule_id"] == "s6"
+    assert body["result"]["ready_at_local"] == "14:57"
+
+
+async def test_brew_now_tool_passes_extra_delay(mcp_with_brew_now: FastMCP, mock_brew_now_service: AsyncMock) -> None:
+    mock_brew_now_service.brew_now.return_value = SAMPLE_BREW_NOW
+    await mcp_with_brew_now.call_tool(
+        "brew_now",
+        {"profile_id": "p3", "water_ml": 400, "extra_delay_seconds": 90},
+    )
+    mock_brew_now_service.brew_now.assert_awaited_once_with(profile_id="p3", water_ml=400, extra_delay_seconds=90)
+
+
+async def test_brew_now_tool_raises_tool_error_on_not_found(
+    mcp_with_brew_now: FastMCP, mock_brew_now_service: AsyncMock
+) -> None:
+    from fastmcp.exceptions import ToolError  # noqa: PLC0415
+
+    mock_brew_now_service.brew_now.side_effect = NotFoundError.for_resource("profile", "p99")
+    with pytest.raises(ToolError) as exc_info:
+        await mcp_with_brew_now.call_tool("brew_now", {"profile_id": "p99", "water_ml": 400})
+    payload = json.loads(str(exc_info.value))
+    assert payload["error"]["code"] == "not_found"
+
+
+async def test_brew_now_tool_raises_tool_error_on_validation(
+    mcp_with_brew_now: FastMCP, mock_brew_now_service: AsyncMock
+) -> None:
+    from fastmcp.exceptions import ToolError  # noqa: PLC0415
+
+    mock_brew_now_service.brew_now.side_effect = ValidationError(
+        message="incomplete", reason="profile_incomplete_for_mode"
+    )
+    with pytest.raises(ToolError) as exc_info:
+        await mcp_with_brew_now.call_tool("brew_now", {"profile_id": "p3", "water_ml": 400})
+    payload = json.loads(str(exc_info.value))
+    assert payload["error"]["code"] == "validation"
