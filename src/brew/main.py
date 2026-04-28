@@ -3,12 +3,9 @@ import logging
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
-from typing import TYPE_CHECKING
 
+import aiosqlite
 from fastapi import Depends, FastAPI, Request
-
-if TYPE_CHECKING:
-    import aiosqlite
 from fastapi.responses import JSONResponse
 
 from brew.aiden.dependencies import build_fellow_client, get_aiden_settings
@@ -102,7 +99,7 @@ def _register_domain_mcp(
 
 async def _wire_chat(
     app: FastAPI,
-    db_conn: "aiosqlite.Connection",
+    db_conn: aiosqlite.Connection,
     journal_service: JournalService,
     bag_service: BagService,
 ) -> None:
