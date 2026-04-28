@@ -3,11 +3,12 @@ from unittest.mock import AsyncMock
 from zoneinfo import ZoneInfo
 
 import pytest
-from brew.aiden.schedules.brew_now import BrewNowService
 
 from brew.aiden.device.model.device import Device
+from brew.aiden.schedules.brew_now import BrewNowService
 from brew.aiden.schedules.model.brew_now import BrewNowResult
 from brew.aiden.schedules.model.schedule import Schedule
+from brew.errors import NotFoundError, ValidationError
 from tests.aiden.profiles.conftest import make_profile
 
 
@@ -189,3 +190,71 @@ async def test_brew_now_extra_delay_pushes_ready_time_further_out(
     # Without delay → 14:57. With +600s (10 min) extra → 15:07.
     result = await service.brew_now(profile_id="p3", water_ml=300, extra_delay_seconds=600)
     assert result.ready_at_local == "15:07"
+
+
+async def test_brew_now_propagates_not_found_when_profile_missing(
+    mock_schedule_service: AsyncMock,
+    mock_profile_service: AsyncMock,
+    mock_device_service: AsyncMock,
+) -> None:
+    mock_profile_service.get_profile.side_effect = NotFoundError.for_resource("profile", "p99")
+
+    service = BrewNowService(
+        schedule_service=mock_schedule_service,
+        profile_service=mock_profile_service,
+        device_service=mock_device_service,
+        now=lambda: datetime.now(UTC),
+    )
+
+    with pytest.raises(NotFoundError):
+        await service.brew_now(profile_id="p99", water_ml=400)
+
+    mock_schedule_service.create_schedule.assert_not_awaited()
+
+
+async def test_brew_now_raises_validation_when_profile_incomplete(
+    mock_schedule_service: AsyncMock,
+    mock_profile_service: AsyncMock,
+    mock_device_service: AsyncMock,
+) -> None:
+    incomplete = make_profile(ss_pulses_number=None)
+    mock_profile_service.get_profile.return_value = incomplete
+    mock_device_service.get_device.return_value = _device("GB-Eire")
+
+    service = BrewNowService(
+        schedule_service=mock_schedule_service,
+        profile_service=mock_profile_service,
+        device_service=mock_device_service,
+        now=lambda: datetime.now(UTC),
+    )
+
+    with pytest.raises(ValidationError):
+        await service.brew_now(profile_id="p3", water_ml=400)
+
+    mock_schedule_service.create_schedule.assert_not_awaited()
+
+
+async def test_brew_now_raises_validation_for_unknown_timezone(
+    mock_schedule_service: AsyncMock,
+    mock_profile_service: AsyncMock,
+    mock_device_service: AsyncMock,
+) -> None:
+    profile = make_profile(
+        bloom_duration=40,
+        ss_pulses_number=2,
+        ss_pulses_interval=25,
+    )
+    mock_profile_service.get_profile.return_value = profile
+    mock_device_service.get_device.return_value = _device("Mars/Olympus")
+
+    service = BrewNowService(
+        schedule_service=mock_schedule_service,
+        profile_service=mock_profile_service,
+        device_service=mock_device_service,
+        now=lambda: datetime.now(UTC),
+    )
+
+    with pytest.raises(ValidationError):
+        await service.brew_now(profile_id="p3", water_ml=400)
+
+    mock_schedule_service.create_schedule.assert_not_awaited()
