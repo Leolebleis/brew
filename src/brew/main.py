@@ -27,6 +27,7 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
+from brew.chat.schema import CHAT_SCHEMA
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
@@ -107,10 +108,8 @@ async def _wire_chat(
     from brew.chat.config import get_chat_settings  # noqa: PLC0415
     from brew.chat.dependencies import get_chat_service  # noqa: PLC0415
     from brew.chat.repository import ChatSqliteRepository  # noqa: PLC0415
-    from brew.chat.schema import CHAT_SCHEMA  # noqa: PLC0415
     from brew.chat.service import ChatService  # noqa: PLC0415
 
-    await init_db(db_conn, [CHAT_SCHEMA])
     chat_settings = get_chat_settings()
     chat_agent = build_chat_agent(
         settings=chat_settings,
@@ -142,7 +141,7 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     db_conn = await open_db(settings.database_path)
-    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
+    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA, CHAT_SCHEMA])
     water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn))
     bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
 

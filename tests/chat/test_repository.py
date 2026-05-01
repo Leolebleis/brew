@@ -1,5 +1,3 @@
-import asyncio
-
 import pytest
 
 from brew.chat.model.message import ChatMessageCreate
@@ -27,11 +25,9 @@ async def test_append_returns_full_entity(repo: ChatSqliteRepository) -> None:
     assert msg.created_at is not None
 
 
-async def test_list_thread_orders_by_created_at_asc(repo: ChatSqliteRepository) -> None:
+async def test_list_thread_orders_by_insertion(repo: ChatSqliteRepository) -> None:
     first = await repo.append(ChatMessageCreate(thread_id="t1", kind="request", payload={"i": 1}))
-    await asyncio.sleep(0.001)
     second = await repo.append(ChatMessageCreate(thread_id="t1", kind="response", payload={"i": 2}))
-    await asyncio.sleep(0.001)
     third = await repo.append(ChatMessageCreate(thread_id="t1", kind="request", payload={"i": 3}))
 
     messages = await repo.list_thread("t1")
@@ -46,9 +42,7 @@ async def test_list_thread_empty_for_unknown_id(repo: ChatSqliteRepository) -> N
 
 async def test_list_threads_returns_distinct_ids_recent_first(repo: ChatSqliteRepository) -> None:
     await repo.append(ChatMessageCreate(thread_id="t-old", kind="request", payload={}))
-    await asyncio.sleep(0.001)
     await repo.append(ChatMessageCreate(thread_id="t-old", kind="response", payload={}))
-    await asyncio.sleep(0.001)
     await repo.append(ChatMessageCreate(thread_id="t-new", kind="request", payload={}))
 
     threads = await repo.list_threads()

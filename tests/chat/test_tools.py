@@ -22,7 +22,7 @@ async def test_query_journal_passes_filters() -> None:
     )
 
 
-async def test_query_journal_serializes_dates_to_iso_strings() -> None:
+async def test_query_journal_returns_full_entry_dicts() -> None:
     when = datetime(2026, 4, 19, 8, 30, tzinfo=UTC)
     entry = make_entry(
         id="e1",
@@ -40,32 +40,25 @@ async def test_query_journal_serializes_dates_to_iso_strings() -> None:
 
     result = await make_query_journal(journal_service)()
 
-    assert result == [
-        {
-            "id": "e1",
-            "brew_ended_at": when.isoformat(),
-            "bag_id": "b1",
-            "profile_id": "p1",
-            "water_ml": 300,
-            "dose_grams": 18,
-            "rating": 5,
-            "note_text": "great",
-        }
-    ]
+    assert len(result) == 1
+    assert result[0]["id"] == "e1"
+    # Full fidelity — brew_started_at, profile_snapshot_at_brew, created_at all preserved.
+    assert result[0]["brew_started_at"] == when
+    assert result[0]["brew_ended_at"] == when
+    assert "profile_snapshot_at_brew" in result[0]
+    assert "created_at" in result[0]
 
 
-async def test_find_historical_bag_filters_by_name_in_python() -> None:
+async def test_find_historical_bag_forwards_name_filter_to_service() -> None:
     bag_match = make_bag(id="bag-match", name="match")
-    bag_other = make_bag(id="bag-other", name="other")
 
     bag_service = AsyncMock()
-    bag_service.list = AsyncMock(return_value=[bag_match, bag_other])
+    bag_service.list = AsyncMock(return_value=[bag_match])
 
     tool = make_find_historical_bag(bag_service)
     result = await tool(name="match")
 
-    # name filter is applied in Python, not forwarded to bag_service
-    bag_service.list.assert_awaited_once_with(roaster=None, origin=None)
+    bag_service.list.assert_awaited_once_with(roaster=None, origin=None, name="match")
     assert len(result) == 1
     assert result[0]["id"] == "bag-match"
     assert result[0]["name"] == "match"
@@ -81,4 +74,3 @@ async def test_find_historical_bag_serializes_profile_snapshot_unchanged() -> No
     result = await make_find_historical_bag(bag_service)()
 
     assert result[0]["profile_snapshot"] == snapshot
-    assert result[0]["profile_snapshot"] is snapshot

@@ -1,12 +1,9 @@
 """pydantic-ai Agent factory.
 
 In-process FastMCPToolset registration avoids a localhost HTTP roundtrip
-per tool call. Caching is enabled for tool definitions only (1h TTL) — hot
-state injection in PR-B will go into user messages with CachePoint to keep
-the cache stable.
-
-The agent is built once per app lifespan; the FastMCPToolset is bound to
-brew's FastMCP instance at construction time."""
+per tool call. The agent is built once per app lifespan; the toolset is
+bound to brew's FastMCP instance at construction time.
+"""
 
 from fastmcp import FastMCP
 from pydantic_ai import Agent

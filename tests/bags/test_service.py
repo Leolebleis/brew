@@ -47,7 +47,7 @@ async def test_list_delegates_with_filters() -> None:
     service = BagService(repo=mock_repo)
     await service.list(active=True, roaster="Onyx")
 
-    mock_repo.list.assert_awaited_once_with(active=True, finished=None, roaster="Onyx", origin=None)
+    mock_repo.list.assert_awaited_once_with(active=True, finished=None, roaster="Onyx", origin=None, name=None)
 
 
 async def test_get_active_returns_active_bag_or_none() -> None:

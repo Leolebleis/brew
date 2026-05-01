@@ -22,6 +22,7 @@ class BagRepository(Protocol):
         finished: bool | None = None,
         roaster: str | None = None,
         origin: str | None = None,
+        name: str | None = None,
     ) -> list[Bag]: ...
     async def update(self, bag_id: str, update: BagUpdate) -> bool: ...
     async def delete(self, bag_id: str) -> bool: ...
@@ -110,6 +111,7 @@ class BagSqliteRepository:
         finished: bool | None = None,
         roaster: str | None = None,
         origin: str | None = None,
+        name: str | None = None,
     ) -> list[Bag]:
         clauses: list[str] = []
         params: list[object] = []
@@ -126,6 +128,9 @@ class BagSqliteRepository:
         if origin is not None:
             clauses.append("origin = ?")
             params.append(origin)
+        if name is not None:
+            clauses.append("name = ?")
+            params.append(name)
 
         sql = "SELECT * FROM bags"
         if clauses:

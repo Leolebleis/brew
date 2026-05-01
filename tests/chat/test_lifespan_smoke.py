@@ -1,15 +1,4 @@
-"""Smoke test: chat agent + service are wired into app.dependency_overrides when enabled.
-
-Approach: monkeypatch `brew.main._chat_enabled`, `brew.main._mcp_enabled`, and
-`brew.main._mcp_server` directly (Option A from the plan), then call `_app_lifespan`
-directly — skipping the outer `lifespan` wrapper which would try to spin up
-`_mcp_app.lifespan(app)`. This is sufficient because the test's only goal is to
-verify that `get_chat_service` ends up in `app.dependency_overrides`.
-
-`build_fellow_client` is patched in both modules it's referenced from (same pattern
-as `tests/e2e/conftest.py`) so no network calls are made. No actual Anthropic API
-calls occur because the agent is constructed but never invoked.
-"""
+"""Smoke test: chat agent + service are wired into app.dependency_overrides when enabled."""
 
 from unittest.mock import Mock
 
