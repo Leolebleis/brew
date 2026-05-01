@@ -16,3 +16,8 @@ def now_iso() -> str:
 def to_iso(dt: datetime) -> str:
     """Format a datetime as ISO-8601 with `Z` suffix (replaces `+00:00`)."""
     return dt.isoformat().replace("+00:00", "Z")
+
+
+def from_iso(value: str) -> datetime:
+    """Parse an ISO-8601 timestamp (accepts both `Z` and `+00:00` suffixes)."""
+    return datetime.fromisoformat(value)

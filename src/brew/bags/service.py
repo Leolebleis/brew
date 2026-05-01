@@ -27,8 +27,9 @@ class BagService:
         finished: bool | None = None,
         roaster: str | None = None,
         origin: str | None = None,
+        name: str | None = None,
     ) -> list[Bag]:
-        return await self._repo.list(active=active, finished=finished, roaster=roaster, origin=origin)
+        return await self._repo.list(active=active, finished=finished, roaster=roaster, origin=origin, name=name)
 
     async def get_active(self) -> Bag | None:
         return await self._repo.get_active()
