@@ -207,14 +207,14 @@ register_exception_handlers(app)
 # be reachable without auth — otherwise auth misconfig is indistinguishable
 # from a dead app. Domain routers apply the guard individually.
 app.include_router(health_router)
-app.include_router(device_router, dependencies=[Depends(require_api_key)])
-app.include_router(profiles_router, dependencies=[Depends(require_api_key)])
-app.include_router(schedules_router, dependencies=[Depends(require_api_key)])
-app.include_router(water_router, dependencies=[Depends(require_api_key)])
-app.include_router(bags_router, dependencies=[Depends(require_api_key)])
-app.include_router(journal_router, dependencies=[Depends(require_api_key)])
-app.include_router(events_router, dependencies=[Depends(require_api_key)])
-app.include_router(chat_router, dependencies=[Depends(require_api_key)])
+app.include_router(device_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(profiles_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(schedules_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(water_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(bags_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(journal_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(events_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(chat_router, prefix="/api", dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.

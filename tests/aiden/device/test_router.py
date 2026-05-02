@@ -25,7 +25,7 @@ async def test_get_device_returns_200(client: AsyncClient, mock_device_service: 
     mock_device_service.get_device.return_value = make_device(
         brewer_id="b1", display_name="My Aiden", firmware_version="3.2.1"
     )
-    response = await client.get("/device")
+    response = await client.get("/api/device")
     assert response.status_code == 200
     data = response.json()
     assert data["brewer_id"] == "b1"
@@ -37,13 +37,13 @@ async def test_get_device_returns_503_when_unavailable(client: AsyncClient, mock
     mock_device_service.get_device.side_effect = CloudUnreachableError(
         message="Could not reach Fellow cloud", original="ConnectionError"
     )
-    response = await client.get("/device")
+    response = await client.get("/api/device")
     assert response.status_code == 503
 
 
 async def test_patch_settings_returns_200(client: AsyncClient, mock_device_service: AsyncMock) -> None:
     mock_device_service.adjust_setting.return_value = None
-    response = await client.patch("/device/settings", json={"setting": "volume", "value": 5})
+    response = await client.patch("/api/device/settings", json={"setting": "volume", "value": 5})
     assert response.status_code == 200
 
 
@@ -51,5 +51,5 @@ async def test_patch_settings_returns_503_when_unavailable(client: AsyncClient, 
     mock_device_service.adjust_setting.side_effect = CloudUnreachableError(
         message="Could not reach Fellow cloud", original="ConnectionError"
     )
-    response = await client.patch("/device/settings", json={"setting": "volume", "value": 5})
+    response = await client.patch("/api/device/settings", json={"setting": "volume", "value": 5})
     assert response.status_code == 503

@@ -44,7 +44,7 @@ async def test_health_bypasses_api_key_guard() -> None:
 async def test_domain_route_missing_api_key_returns_403() -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/device")
+        response = await ac.get("/api/device")
     assert response.status_code == 403
 
 
@@ -52,7 +52,7 @@ async def test_domain_route_missing_api_key_returns_403() -> None:
 async def test_domain_route_invalid_api_key_returns_403() -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/device", headers={"X-API-Key": "wrong-key"})
+        response = await ac.get("/api/device", headers={"X-API-Key": "wrong-key"})
     assert response.status_code == 403
 
 
@@ -60,5 +60,5 @@ async def test_domain_route_invalid_api_key_returns_403() -> None:
 async def test_domain_route_valid_api_key_allows_request() -> None:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        response = await ac.get("/device", headers={"X-API-Key": "test-secret-key"})
+        response = await ac.get("/api/device", headers={"X-API-Key": "test-secret-key"})
     assert response.status_code == 200

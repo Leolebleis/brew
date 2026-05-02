@@ -61,7 +61,7 @@ async def test_post_then_get_replays_turn(chat_e2e_client: AsyncClient) -> None:
     """Golden path: POST a message, consume SSE stream ending in `done`, then GET replays both rows."""
     async with chat_e2e_client.stream(
         "POST",
-        "/chat/messages",
+        "/api/chat/messages",
         json={"text": "hello"},
         headers={"X-API-Key": ""},
     ) as resp:
@@ -77,7 +77,7 @@ async def test_post_then_get_replays_turn(chat_e2e_client: AsyncClient) -> None:
     assistant_id = done_data["message_id"]
 
     # Replay
-    resp = await chat_e2e_client.get("/chat/messages?limit=10", headers={"X-API-Key": ""})
+    resp = await chat_e2e_client.get("/api/chat/messages?limit=10", headers={"X-API-Key": ""})
     assert resp.status_code == 200
     body = resp.json()
     ids = [m["id"] for m in body["messages"]]
@@ -101,7 +101,7 @@ async def test_mid_stream_error_persists_user_row_only(chat_e2e_client: AsyncCli
 
     async with chat_e2e_client.stream(
         "POST",
-        "/chat/messages",
+        "/api/chat/messages",
         json={"text": "trigger failure"},
         headers={"X-API-Key": ""},
     ) as resp:
@@ -113,7 +113,7 @@ async def test_mid_stream_error_persists_user_row_only(chat_e2e_client: AsyncCli
     assert "done" not in event_names
 
     # User-row stayed; no assistant-row.
-    resp = await chat_e2e_client.get("/chat/messages?limit=10", headers={"X-API-Key": ""})
+    resp = await chat_e2e_client.get("/api/chat/messages?limit=10", headers={"X-API-Key": ""})
     body = resp.json()
     kinds = [m["kind"] for m in body["messages"]]
     assert kinds.count("request") >= 1

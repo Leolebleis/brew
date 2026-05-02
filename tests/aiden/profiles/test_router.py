@@ -24,7 +24,7 @@ def _override_profile_service(mock_profile_service: AsyncMock) -> None:
 
 async def test_list_profiles_returns_200(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.list_profiles.return_value = [SAMPLE_PROFILE]
-    response = await client.get("/profiles")
+    response = await client.get("/api/profiles")
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 1
@@ -36,14 +36,14 @@ async def test_list_profiles_returns_503_on_cloud_error(client: AsyncClient, moc
     mock_profile_service.list_profiles.side_effect = CloudUnreachableError(
         message="Fellow cloud unavailable", original="ConnectionError"
     )
-    response = await client.get("/profiles")
+    response = await client.get("/api/profiles")
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "cloud_unreachable"
 
 
 async def test_get_profile_returns_200(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.get_profile.return_value = SAMPLE_PROFILE
-    response = await client.get("/profiles/p0")
+    response = await client.get("/api/profiles/p0")
     assert response.status_code == 200
     assert response.json()["id"] == "p0"
 
@@ -52,7 +52,7 @@ async def test_get_profile_returns_404(client: AsyncClient, mock_profile_service
     mock_profile_service.get_profile.side_effect = NotFoundError(
         message="Profile p99 not found", resource_kind="profile", resource_id="p99"
     )
-    response = await client.get("/profiles/p99")
+    response = await client.get("/api/profiles/p99")
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "not_found"
 
@@ -60,7 +60,7 @@ async def test_get_profile_returns_404(client: AsyncClient, mock_profile_service
 async def test_create_profile_from_fields_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile.return_value = SAMPLE_PROFILE
     response = await client.post(
-        "/profiles",
+        "/api/profiles",
         json={
             "source": "manual",
             "title": "Morning Brew",
@@ -87,7 +87,7 @@ async def test_create_profile_from_fields_returns_201(client: AsyncClient, mock_
 async def test_create_profile_from_link_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.create_profile_from_link.return_value = SAMPLE_PROFILE
     response = await client.post(
-        "/profiles",
+        "/api/profiles",
         json={
             "source": "brew_link",
             "brew_link": "https://brew.link/abc123",
@@ -99,12 +99,12 @@ async def test_create_profile_from_link_returns_201(client: AsyncClient, mock_pr
 
 async def test_delete_profile_returns_204(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.delete_profile.return_value = None
-    response = await client.delete("/profiles/p0")
+    response = await client.delete("/api/profiles/p0")
     assert response.status_code == 204
 
 
 async def test_generate_link_returns_201(client: AsyncClient, mock_profile_service: AsyncMock) -> None:
     mock_profile_service.generate_link.return_value = ProfileLink(url="https://brew.link/abc123")
-    response = await client.post("/profiles/p0/link")
+    response = await client.post("/api/profiles/p0/link")
     assert response.status_code == 201
     assert response.json()["url"] == "https://brew.link/abc123"

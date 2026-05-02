@@ -22,7 +22,7 @@ async def test_get_device_returns_mocked_fellow_response(fellow_mock: Mock, e2e_
         "batchBrewBasketPresent": True,
     }
 
-    response = await e2e_client.get("/device")
+    response = await e2e_client.get("/api/device")
 
     assert response.status_code == 200
     data = response.json()
@@ -43,7 +43,7 @@ async def test_get_device_reflects_brewing_state(fellow_mock: Mock, e2e_client: 
         "brewingProfileId": "p-1",
     }
 
-    response = await e2e_client.get("/device")
+    response = await e2e_client.get("/api/device")
 
     assert response.status_code == 200
     data = response.json()

@@ -45,8 +45,8 @@ def _events_scope() -> dict[str, Any]:
         "http_version": "1.1",
         "scheme": "http",
         "method": "GET",
-        "path": "/events",
-        "raw_path": b"/events",
+        "path": "/api/events",
+        "raw_path": b"/api/events",
         "query_string": b"",
         "headers": [],
         "server": ("test", 80),
@@ -126,10 +126,10 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(  # noqa: PLR0915
                 "profile_snapshot": {"target_volume": 330, "ratio": 15.5},
                 "profile_id": "p-1",
             }
-            create_resp = await http.post("/bags", json=bag_payload)
+            create_resp = await http.post("/api/bags", json=bag_payload)
             assert create_resp.status_code == 201
             bag_id = create_resp.json()["id"]
-            activate_resp = await http.post(f"/bags/{bag_id}/activate")
+            activate_resp = await http.post(f"/api/bags/{bag_id}/activate")
             assert activate_resp.status_code == 200
 
         # Give the poller one iteration at brewing=True so it captures profile_id.
@@ -174,7 +174,7 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(  # noqa: PLR0915
 
         # Confirm the journal row is persisted and the water decrement subscriber ran.
         async with AsyncClient(transport=ASGITransport(app=asgi_app), base_url="http://test") as http:
-            list_resp = await http.get("/journal")
+            list_resp = await http.get("/api/journal")
             assert list_resp.status_code == 200
             entries = list_resp.json()
             assert len(entries) == 1
@@ -182,12 +182,12 @@ async def test_poller_auto_logs_journal_entry_and_broadcasts(  # noqa: PLR0915
             assert entries[0]["water_ml"] == 330
             assert entries[0]["dose_grams"] == 21
 
-            water_resp = await http.get("/water")
+            water_resp = await http.get("/api/water")
             assert water_resp.status_code == 200
             # Reservoir starts at MAX (1500 ml); the brew used 330 ml.
             assert water_resp.json()["remaining_ml"] == 1500 - 330
 
-            bag_resp = await http.get(f"/bags/{bag_id}")
+            bag_resp = await http.get(f"/api/bags/{bag_id}")
             assert bag_resp.status_code == 200
             # initial_grams=250, dose_grams=21 → 229 left, still active.
             assert bag_resp.json()["remaining_grams"] == 250 - 21
