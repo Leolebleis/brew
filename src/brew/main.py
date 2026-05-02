@@ -6,7 +6,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
 import aiosqlite
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -232,12 +232,31 @@ app.include_router(water_router, prefix="/api", dependencies=[Depends(require_ap
 app.include_router(bags_router, prefix="/api", dependencies=[Depends(require_api_key)])
 app.include_router(journal_router, prefix="/api", dependencies=[Depends(require_api_key)])
 app.include_router(events_router, prefix="/api", dependencies=[Depends(require_api_key)])
-app.include_router(chat_router, prefix="/api", dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
 _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
 _chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
+
+
+def _require_chat_enabled() -> None:
+    """404 the chat endpoints when chat (or its MCP dependency) isn't wired.
+
+    Read at request time, not module load, so chat e2e tests can monkeypatch
+    `_chat_enabled` / `_mcp_enabled` to True after import. The wiring condition
+    must mirror `_app_lifespan`'s `if _chat_enabled and _mcp_enabled:` block —
+    if chat isn't wired in lifespan, the dependency stub raises
+    NotImplementedError on every call, which leaks as a 500.
+    """
+    if not (_chat_enabled and _mcp_enabled):
+        raise HTTPException(status_code=404)
+
+
+app.include_router(
+    chat_router,
+    prefix="/api",
+    dependencies=[Depends(require_api_key), Depends(_require_chat_enabled)],
+)
 
 if _mcp_enabled:
     from fastmcp import FastMCP as _FastMCP

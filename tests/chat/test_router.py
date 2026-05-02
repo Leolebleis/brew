@@ -17,7 +17,7 @@ from brew.chat.model.event import (
 )
 from brew.chat.model.message import ChatMessage
 from brew.errors import NotFoundError
-from brew.main import app
+from brew.main import _require_chat_enabled, app
 from tests._sse import parse_sse
 
 
@@ -40,9 +40,13 @@ def mock_service() -> AsyncMock:
 
 @pytest.fixture(autouse=True)
 def _override_service(mock_service: AsyncMock):
+    # Bypass the runtime feature-flag gate (this fixture exercises the wired
+    # router directly; the disabled path is covered in tests/e2e).
     app.dependency_overrides[get_chat_service] = lambda: mock_service
+    app.dependency_overrides[_require_chat_enabled] = lambda: None
     yield
     app.dependency_overrides.pop(get_chat_service, None)
+    app.dependency_overrides.pop(_require_chat_enabled, None)
 
 
 def _scripted_stream(events: list):

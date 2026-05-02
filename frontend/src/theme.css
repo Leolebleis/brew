@@ -14,8 +14,12 @@
   --color-destructive: #DC2626;
 }
 
+/* System-mode only: when no explicit data-theme is set, follow the OS.
+   `:not([data-theme])` raises specificity above the bare `[data-theme="light"]`
+   and `[data-theme="dark"]` rules below — without it, this @media block would
+   override an explicit user choice via source order on equal specificity. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --color-bg: #1A1410;
     --color-surface: #2A1F18;
     --color-fg: #F5E9D7;
