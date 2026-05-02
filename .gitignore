@@ -12,3 +12,8 @@ htmlcov/
 docs/superpowers/
 .superpowers/
 docker-compose.override.yml
+
+# frontend - build artifacts and local env stay ignored
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
