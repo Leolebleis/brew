@@ -23,6 +23,7 @@ coffee occasionally tangling itself up.
 - Concrete impls: `Fellow<Domain>HttpClient` (transport suffix)
 - Mappers: `Fellow<Domain>HttpMapper`
 - API↔domain mappers: `<Domain>Mapper`
+- Mapper API↔domain method: `@staticmethod def to_api_response(x) -> XResponse: return XResponse.model_validate(asdict(x))` (see journal/bags/chat)
 
 ## Error handling
 
@@ -84,6 +85,10 @@ Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 - Lifespan eagerly authenticates with Fellow; the app fails to start if creds are invalid. Tests use `httpx.ASGITransport` which does NOT run startup events, so conftest fake creds work
 - Fellow library has no typed exceptions — domain clients pattern-match `"not found" in str(e).lower()` to derive 404s. Fragile; if Fellow changes wording, `NotFoundError` silently becomes `CloudUnreachableError`
 - Fellow library silently returns `False` (not an exception) on some validation failures (e.g., bad `profile_id` to `create_schedule`) — handled in `FellowScheduleHttpClient.create_schedule` by raising `ValidationError`
+- pydantic-ai 1.87+: `AgentRunResultEvent` is at top-level `pydantic_ai`, NOT `pydantic_ai.messages` (lives in `pydantic_ai.run`)
+- Chat e2e tests via `LifespanManager(app)` must patch `_mcp_app` when forcing `_mcp_enabled=True` (use `mcp_server.http_app(path="/")`); smoke tests calling `_app_lifespan` directly don't need this
+- pydantic-ai `TestModel` defaults to `call_tools='all'` — use `call_tools=[]` in chat tests to avoid hitting mocked Fellow clients
+- Post-edit ruff hook strips imports that become temporarily unused between edits — re-add when you reintroduce the callsite
 
 ## Testing
 
@@ -92,3 +97,5 @@ Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 - MCP tests use `FastMCP.call_tool()` / `FastMCP.read_resource()` with mock services
 - `tests/conftest.py` clears both `get_settings` and `get_aiden_settings` LRU caches per test
 - `tests/aiden/{device,profiles,schedules}/conftest.py` provides `make_<entity>(**overrides)` helpers so tests don't spell out every field
+- SSE-stream parsing for tests: `tests/_sse.py` exposes `parse_sse(lines)` and `parse_sse_async(async_lines)` — reuse, don't reimplement
+- Fellow mock fixture: reuse `fellow_mock` from `tests/e2e/conftest.py` rather than redefining `_make_fellow_mock` per test file
