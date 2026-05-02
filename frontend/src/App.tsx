@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   AssistantRuntimeProvider,
   ComposerPrimitive,
@@ -6,9 +6,14 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
 } from "@assistant-ui/react";
-import { ThemeToggle } from "./components/theme-toggle";
+import { useQueryClient } from "@tanstack/react-query";
 import { useChatRuntime } from "./chat/runtime";
 import { loadInitialThread } from "./chat/replay";
+import { StatusHeader } from "./status/header";
+import { startStatusEventListener } from "./status/event-listener";
+import { BrewNowSheet } from "./brewnow/sheet";
+import { RatingToast } from "./rating/toast";
+import { ToastProvider } from "./components/toast";
 
 function TextPart() {
   return <MessagePartPrimitive.Text />;
@@ -60,25 +65,38 @@ function Thread() {
 
 export default function App() {
   const runtime = useChatRuntime();
+  const qc = useQueryClient();
+  const [brewOpen, setBrewOpen] = useState(false);
+  const [pendingRating, setPendingRating] = useState<string | null>(null);
 
   useEffect(() => {
     loadInitialThread().catch((err) => console.error("Initial thread load failed:", err));
   }, []);
 
+  useEffect(() => {
+    const ac = new AbortController();
+    startStatusEventListener(qc, (entryId) => setPendingRating(entryId), ac.signal);
+    return () => ac.abort();
+  }, [qc]);
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <div className="min-h-dvh flex flex-col">
-        <header className="flex justify-between items-center p-4 border-b border-[color:var(--color-border)]">
-          <span className="font-semibold uppercase text-xs tracking-wide" style={{ color: "var(--color-primary)" }}>Brew</span>
-          <div className="flex gap-2 items-center">
-            <span className="text-xs opacity-60">Status header — Phase 3</span>
-            <ThemeToggle />
-          </div>
-        </header>
-        <main className="flex-1 overflow-hidden">
-          <Thread />
-        </main>
-      </div>
+      <ToastProvider>
+        <div className="min-h-dvh flex flex-col">
+          <StatusHeader onBrew={() => setBrewOpen(true)} />
+          <main className="flex-1 overflow-hidden">
+            <Thread />
+          </main>
+          <BrewNowSheet open={brewOpen} onClose={() => setBrewOpen(false)} />
+          {pendingRating && (
+            <RatingToast
+              entryId={pendingRating}
+              open={true}
+              onClose={() => setPendingRating(null)}
+            />
+          )}
+        </div>
+      </ToastProvider>
     </AssistantRuntimeProvider>
   );
 }
