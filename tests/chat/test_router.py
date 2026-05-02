@@ -149,6 +149,7 @@ async def test_get_no_cursor_returns_messages_and_next_before_id(
     body = resp.json()
     assert [m["id"] for m in body["messages"]] == ["m0", "m1", "m2"]
     assert body["next_before_id"] == "m2"
+    assert "projected" in body["messages"][0]
     mock_service.get_thread.assert_awaited_once_with("default", limit=3, before_id=None)
 
 

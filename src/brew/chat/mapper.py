@@ -4,7 +4,6 @@ The pydantic-ai event mapper is pure; tests fabricate event instances
 directly without invoking a model.
 """
 
-from dataclasses import asdict
 from typing import Any
 
 from pydantic_ai import AgentRunResultEvent
@@ -31,6 +30,7 @@ from brew.chat.model.event import (
     ToolCallStart,
 )
 from brew.chat.model.message import ChatMessage
+from brew.chat.projections import project_message
 
 
 def pydantic_ai_to_agent_event(event: Any) -> AgentStreamEvent | None:  # noqa: ANN401, PLR0911
@@ -80,4 +80,17 @@ def pydantic_ai_to_agent_event(event: Any) -> AgentStreamEvent | None:  # noqa: 
 class ChatMessageMapper:
     @staticmethod
     def to_api_response(msg: ChatMessage) -> ChatMessageResponse:
-        return ChatMessageResponse.model_validate(asdict(msg))
+        # Deserialize the raw payload into ModelMessage(s) and project the first
+        # one — chat_messages stores one ModelMessage per row.
+        try:
+            messages = ModelMessagesTypeAdapter.validate_python([msg.payload])
+            projected = project_message(messages[0]) if messages else None
+        except Exception:  # noqa: BLE001 — projection is best-effort
+            projected = None
+        return ChatMessageResponse(
+            id=msg.id,
+            kind=msg.kind,
+            payload=msg.payload,
+            projected=projected,
+            created_at=msg.created_at,
+        )

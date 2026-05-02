@@ -87,6 +87,12 @@ async def test_post_then_get_replays_turn(chat_e2e_client: AsyncClient) -> None:
     assert kinds.count("response") == 1
     assert body["next_before_id"] is None  # only 2 rows, less than limit
 
+    # Each message has a projected ThreadMessageLike-shaped field.
+    for m in body["messages"]:
+        assert "projected" in m
+        assert m["projected"] is not None
+        assert m["projected"]["role"] in {"user", "assistant"}
+
 
 async def test_mid_stream_error_persists_user_row_only(chat_e2e_client: AsyncClient) -> None:
     """Mid-stream agent failure: user-row stays, no assistant-row, SSE ends with `error`."""
