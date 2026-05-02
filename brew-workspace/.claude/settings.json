@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "brew": {
+      "type": "http",
+      "url": "http://localhost:8000/mcp",
+      "headers": {
+        "X-API-Key": "${FELLOW_API_KEY}"
+      }
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__brew__*",
+      "Read",
+      "Bash(uv run pytest:*)"
+    ]
+  }
+}
