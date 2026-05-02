@@ -1,12 +1,14 @@
 import asyncio
 import logging
 import os
+import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
 import aiosqlite
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from brew.aiden.dependencies import build_fellow_client, get_aiden_settings
 from brew.aiden.device.client import FellowDeviceHttpClient
@@ -241,6 +243,14 @@ if _mcp_enabled:
     _mcp_api_key = os.getenv("FELLOW_API_KEY")
     _mcp_app.add_middleware(McpApiKeyMiddleware, api_key=_mcp_api_key)
     app.mount("/mcp", _mcp_app)
+
+# Frontend SPA mount — must come AFTER all routers/mounts so `/health`, `/api/*`,
+# and `/mcp` take precedence. `html=True` falls back to index.html for unknown
+# paths (SPA client-side routing). Gated on dist/ existing so tests don't need
+# a built frontend.
+_FRONTEND_DIST = pathlib.Path(__file__).parent.parent.parent / "frontend" / "dist"
+if _FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
 
 
 @app.exception_handler(Exception)
