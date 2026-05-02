@@ -27,6 +27,7 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
+from brew.chat.router import router as chat_router
 from brew.chat.schema import CHAT_SCHEMA
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
@@ -213,6 +214,7 @@ app.include_router(water_router, dependencies=[Depends(require_api_key)])
 app.include_router(bags_router, dependencies=[Depends(require_api_key)])
 app.include_router(journal_router, dependencies=[Depends(require_api_key)])
 app.include_router(events_router, dependencies=[Depends(require_api_key)])
+app.include_router(chat_router, dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
