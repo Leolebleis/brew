@@ -7,11 +7,13 @@ coffee occasionally tangling itself up.
 ## Architecture
 
 - Three-layer clean architecture (API ⟶ Domain ⟵ Infrastructure) with domain-first folders
-- `src/brew/aiden/{device,profiles,schedules}/` — each has `router.py`, `mcp.py`, `service.py`, `mapper.py`, `client.py` (protocol + HTTP impl + Fellow-payload mapper), `model/`
-- One `aiden/` bounded context today; future designs can add siblings (e.g., bean tracking)
+- Bounded contexts under `src/brew/`: `aiden/` (Fellow device + profiles + schedules), `bags/` (coffee bag inventory), `chat/` (LLM chat over SSE), `events/` (in-process bus + SSE broadcaster), `health/` (liveness probe), `journal/` (brew log), `water/` (reservoir tracking)
+- `aiden/{device,profiles,schedules}/` follow the canonical layout: `router.py`, `mcp.py`, `service.py`, `mapper.py`, `client.py` (Protocol + HTTP impl + Fellow-payload mapper), `model/`
 - `src/brew/errors.py` — `DomainError` hierarchy (shared)
 - `src/brew/response_models.py` + `exception_handlers.py` — presentation wire format
 - `src/brew/aiden/datetime_parsing.py` — shared Fellow timestamp parser
+- `src/brew/datetime_utils.py` — `to_iso` / `from_iso` for sqlite-stored timestamps (use these; don't hand-roll `datetime.fromisoformat`)
+- `src/brew/db.py` — `open_db` / `init_db` shared sqlite helpers
 - `src/brew/config.py` — app-wide settings (api_key, host, port, mcp_enabled)
 - `src/brew/aiden/config.py` — `AidenSettings` (Fellow cloud creds)
 - `src/brew/aiden/dependencies.py` — `get_aiden_settings`, `build_fellow_client`
@@ -50,7 +52,7 @@ No binary `*Outcome` enums.
 ## Commands
 
 - `uv sync` — install
-- `uv run pytest -v` — test (145 tests in ~0.3s)
+- `uv run pytest -v` — test
 - `uv run ruff check src/ tests/` — lint
 - `uv run ruff format src/ tests/` — format
 - `uv run ty check src/` — type check
