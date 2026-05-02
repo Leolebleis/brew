@@ -38,3 +38,27 @@ class JournalEntryCreated:
     profile_id: str | None
     water_ml: int
     dose_grams: int
+
+
+@dataclass(frozen=True)
+class BagActivated:
+    """Fired by BagService.activate after the active flag flips."""
+
+    bag_id: str
+    name: str
+
+
+@dataclass(frozen=True)
+class BagFinished:
+    """Fired when a bag is marked finished — either via BagService.zero (manual)
+    or by the bag-decrement subscriber when remaining_grams reaches 0.
+    """
+
+    bag_id: str
+
+
+@dataclass(frozen=True)
+class WaterRefilled:
+    """Fired by WaterService.refill after the reservoir resets."""
+
+    remaining_ml: int
