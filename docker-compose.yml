@@ -11,3 +11,9 @@ services:
     env_file: .env
     ports:
       - "8000:8000"
+    volumes:
+      - claude-state:/home/appuser/.claude
+
+volumes:
+  claude-state:
+    name: brew_claude_state

@@ -5,7 +5,6 @@ import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
-import aiosqlite
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -29,8 +28,6 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
-from brew.chat.router import router as chat_router
-from brew.chat.schema import CHAT_SCHEMA
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
@@ -55,6 +52,7 @@ from brew.journal.repository import JournalSqliteRepository
 from brew.journal.router import router as journal_router
 from brew.journal.schema import JOURNAL_SCHEMA
 from brew.journal.service import JournalService
+from brew.terminal.router import router as terminal_router
 from brew.water.dependencies import get_water_service
 from brew.water.repository import WaterSqliteRepository
 from brew.water.router import router as water_router
@@ -117,29 +115,6 @@ def _register_domain_mcp(
     register_journal_mcp(_mcp_server, journal_service)
 
 
-async def _wire_chat(
-    app: FastAPI,
-    db_conn: aiosqlite.Connection,
-    journal_service: JournalService,
-    bag_service: BagService,
-) -> None:
-    from brew.chat.agent import build_chat_agent  # noqa: PLC0415
-    from brew.chat.config import get_chat_settings  # noqa: PLC0415
-    from brew.chat.dependencies import get_chat_service  # noqa: PLC0415
-    from brew.chat.repository import ChatSqliteRepository  # noqa: PLC0415
-    from brew.chat.service import ChatService  # noqa: PLC0415
-
-    chat_settings = get_chat_settings()
-    chat_agent = build_chat_agent(
-        settings=chat_settings,
-        mcp_server=_mcp_server,
-        journal_service=journal_service,
-        bag_service=bag_service,
-    )
-    chat_service = ChatService(repo=ChatSqliteRepository(conn=db_conn), agent=chat_agent)
-    app.dependency_overrides[get_chat_service] = lambda: chat_service
-
-
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
@@ -160,7 +135,7 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     db_conn = await open_db(settings.database_path)
-    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA, CHAT_SCHEMA])
+    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
@@ -189,9 +164,6 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if _mcp_enabled:
         _register_aiden_mcp(device_service, profile_service, schedule_service, brew_now_service)
         _register_domain_mcp(water_service, bag_service, journal_service)
-
-    if _chat_enabled and _mcp_enabled:
-        await _wire_chat(app, db_conn, journal_service, bag_service)
 
     try:
         yield
@@ -239,23 +211,19 @@ _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
 _chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
 
 
-def _require_chat_enabled() -> None:
-    """404 the chat endpoints when chat (or its MCP dependency) isn't wired.
+def _require_terminal_enabled() -> None:
+    """404 the terminal endpoint when chat/MCP isn't wired.
 
-    Read at request time, not module load, so chat e2e tests can monkeypatch
-    `_chat_enabled` / `_mcp_enabled` to True after import. The wiring condition
-    must mirror `_app_lifespan`'s `if _chat_enabled and _mcp_enabled:` block —
-    if chat isn't wired in lifespan, the dependency stub raises
-    NotImplementedError on every call, which leaks as a 500.
+    Read at request time so tests can monkeypatch the flags after import.
     """
     if not (_chat_enabled and _mcp_enabled):
         raise HTTPException(status_code=404)
 
 
 app.include_router(
-    chat_router,
+    terminal_router,
     prefix="/api",
-    dependencies=[Depends(require_api_key), Depends(_require_chat_enabled)],
+    dependencies=[Depends(require_api_key), Depends(_require_terminal_enabled)],
 )
 
 if _mcp_enabled:
