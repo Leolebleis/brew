@@ -1,17 +1,9 @@
-"""Terminal session orchestration.
-
-`TerminalSession.run(ws)` is the bidirectional pump: one task reads from the
-process and forwards to `ws.send_bytes`; the main loop receives WS frames and
-dispatches them — binary frames go to `process.write`, text frames are parsed
-as `ResizeFrame` and dispatched to `process.resize`.
-
-`TerminalService.attached()` wraps the lifecycle so the router doesn't manage
-process start/close directly.
-"""
+"""Terminal session orchestration."""
 
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -40,9 +32,9 @@ class TerminalSession:
                 await ws.send_bytes(data)
 
         task = asyncio.create_task(pump_to_ws())
-        # Let the pump task be scheduled before we enter the receive loop,
-        # so any already-buffered output flushes even if the WS disconnects
-        # immediately. AsyncMocks in tests resolve synchronously.
+        # Yield so pump_to_ws is scheduled before we receive — AsyncMocks in
+        # tests resolve synchronously and would otherwise let an immediate
+        # disconnect cancel the pump before any buffered output flushes.
         await asyncio.sleep(0)
         try:
             while True:
@@ -56,6 +48,8 @@ class TerminalSession:
             pass
         finally:
             task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await task
 
 
 class TerminalService:

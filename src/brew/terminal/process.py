@@ -1,10 +1,7 @@
 """PTY-backed concrete TerminalProcessFacade implementation.
 
-Forks a child process under a pseudoterminal, exec'ing `tmux new-session -A`
-to attach-or-create the persistent claude session inside the configured
-workspace directory. The tmux server outlives the WebSocket — disconnect
-cancels reads but does NOT SIGHUP the server, so the next connection can
-reattach the same session.
+Forks tmux under a PTY. The tmux server outlives the WebSocket so the next
+connection can reattach the same session — close() does NOT signal the child.
 """
 
 from __future__ import annotations
@@ -20,8 +17,7 @@ import termios
 DEFAULT_WORKSPACE = "/app/brew-workspace"
 DEFAULT_SESSION = "claude"
 
-_NOT_STARTED_WRITE = "start() must be called before write()"
-_NOT_STARTED_RESIZE = "start() must be called before resize()"
+_NOT_STARTED = "start() must be called before {}()"
 
 
 class TmuxPtyProcess:
@@ -32,14 +28,6 @@ class TmuxPtyProcess:
         session_name: str = DEFAULT_SESSION,
         argv: list[str] | None = None,
     ) -> None:
-        """Construct a TmuxPtyProcess.
-
-        `argv` is the exec target — defaults to the tmux attach-or-create
-        invocation. Tests override it to spawn `/bin/cat` directly without
-        tmux/claude.
-        """
-        self._workspace = workspace_dir
-        self._session = session_name
         self._argv = argv or [
             "tmux",
             "new-session",
@@ -62,23 +50,21 @@ class TmuxPtyProcess:
 
     async def read(self, n: int) -> bytes:
         if self._fd is None:
-            # Not started, or already closed — clean EOF.
             return b""
-        loop = asyncio.get_running_loop()
         try:
-            return await loop.run_in_executor(None, os.read, self._fd, n)
+            return await asyncio.to_thread(os.read, self._fd, n)
         except OSError:
-            # PTY closed (child exited) — treat as clean EOF.
+            # PTY closed (child exited) — clean EOF.
             return b""
 
     async def write(self, data: bytes) -> None:
         if self._fd is None:
-            raise RuntimeError(_NOT_STARTED_WRITE)
+            raise RuntimeError(_NOT_STARTED.format("write"))
         os.write(self._fd, data)
 
     async def resize(self, rows: int, cols: int) -> None:
         if self._fd is None:
-            raise RuntimeError(_NOT_STARTED_RESIZE)
+            raise RuntimeError(_NOT_STARTED.format("resize"))
         fcntl.ioctl(
             self._fd,
             termios.TIOCSWINSZ,
@@ -90,7 +76,5 @@ class TmuxPtyProcess:
             with contextlib.suppress(OSError):
                 os.close(self._fd)
             self._fd = None
-        # Deliberately do NOT kill self._pid: when running tmux, the server
-        # outlives this connection so the next WS attach finds the session
-        # alive. For test usage with /bin/cat, the child exits when the fd
-        # is closed.
+        # Deliberately do NOT kill self._pid: tmux server must outlive the
+        # WebSocket so the next attach reuses the same session.

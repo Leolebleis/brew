@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render } from "@testing-library/react";
 import { TerminalTab } from "./terminal-tab";
 
+let lastSocket: MockWebSocket | null = null;
+
 class MockWebSocket {
   url: string;
   binaryType = "arraybuffer";
@@ -14,6 +16,7 @@ class MockWebSocket {
 
   constructor(url: string) {
     this.url = url;
+    lastSocket = this; // eslint-disable-line @typescript-eslint/no-this-alias -- test capture, not aliasing
   }
   send(data: string | ArrayBufferLike | Blob | ArrayBufferView): void {
     this.sent.push(data);
@@ -25,22 +28,9 @@ class MockWebSocket {
   removeEventListener = vi.fn();
 }
 
-let lastSocket: MockWebSocket | null = null;
-
-function recordSocket(socket: MockWebSocket): void {
-  lastSocket = socket;
-}
-
-class TestWebSocket extends MockWebSocket {
-  constructor(url: string) {
-    super(url);
-    recordSocket(this);
-  }
-}
-
 beforeEach(() => {
   lastSocket = null;
-  vi.stubGlobal("WebSocket", TestWebSocket);
+  vi.stubGlobal("WebSocket", MockWebSocket);
 });
 
 afterEach(() => {

@@ -212,13 +212,9 @@ _chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
 
 
 def _require_terminal_enabled() -> None:
-    """404 the terminal endpoint when chat (or its MCP dependency) isn't wired.
+    """404 the terminal endpoint when chat/MCP isn't wired.
 
-    Read at request time, not module load, so tests can monkeypatch
-    `_chat_enabled` / `_mcp_enabled` to True after import. Mirror the wiring
-    condition in the lifespan (`if _chat_enabled and _mcp_enabled:`); if
-    either is false the terminal endpoint must 404 cleanly rather than
-    fail mid-request.
+    Read at request time so tests can monkeypatch the flags after import.
     """
     if not (_chat_enabled and _mcp_enabled):
         raise HTTPException(status_code=404)

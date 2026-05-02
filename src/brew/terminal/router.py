@@ -1,10 +1,4 @@
-"""WebSocket endpoint at /api/terminal/ws.
-
-Thin: delegates to TerminalService.attached() and TerminalSession.run().
-Auth via the existing `require_api_key` dependency (reads `X-API-Key` header
-or `?api_key=` query param). Feature gate via `_require_terminal_enabled`
-in `brew.main`.
-"""
+"""WebSocket endpoint at /api/terminal/ws."""
 
 from __future__ import annotations
 
