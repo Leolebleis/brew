@@ -5,7 +5,11 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 ARG VITE_FELLOW_API_KEY
+ARG VITE_BASE_PATH=/
+ARG VITE_API_BASE=/api
 ENV VITE_FELLOW_API_KEY=${VITE_FELLOW_API_KEY}
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
+ENV VITE_API_BASE=${VITE_API_BASE}
 RUN npm run build
 
 # Stage 2 — Python builder

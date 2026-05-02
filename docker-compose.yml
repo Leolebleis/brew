@@ -4,6 +4,8 @@ services:
       context: .
       args:
         VITE_FELLOW_API_KEY: ${FELLOW_API_KEY}
+        VITE_BASE_PATH: ${VITE_BASE_PATH:-/}
+        VITE_API_BASE: ${VITE_API_BASE:-/api}
     container_name: brew
     restart: unless-stopped
     env_file: .env
