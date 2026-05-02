@@ -3,7 +3,6 @@
 Pure-function coverage for each pydantic-ai part type we expect.
 """
 
-from brew.chat.projections import project_message
 from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
@@ -14,6 +13,8 @@ from pydantic_ai.messages import (
     ToolReturnPart,
     UserPromptPart,
 )
+
+from brew.chat.projections import project_message
 
 
 def test_user_prompt_projects_to_user_text() -> None:
