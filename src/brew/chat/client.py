@@ -34,9 +34,7 @@ class PydanticAiChatAgent:
         prompt: str,
         history: list[dict[str, Any]],
     ) -> AsyncIterator[AgentStreamEvent]:
-        # Deserialize raw payloads to typed ModelMessage list. The adapter
-        # validates a list-of-messages.
-        message_history = ModelMessagesTypeAdapter.validate_python(history) if history else []
+        message_history = ModelMessagesTypeAdapter.validate_python(history)
 
         async for event in self._agent.run_stream_events(prompt, message_history=message_history):
             mapped = pydantic_ai_to_agent_event(event)

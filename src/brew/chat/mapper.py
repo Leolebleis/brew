@@ -4,7 +4,7 @@ The pydantic-ai event mapper is pure; tests fabricate event instances
 directly without invoking a model.
 """
 
-import json
+from dataclasses import asdict
 from typing import Any
 
 from pydantic_ai import AgentRunResultEvent
@@ -61,16 +61,13 @@ def pydantic_ai_to_agent_event(event: Any) -> AgentStreamEvent | None:  # noqa: 
     if isinstance(event, FunctionToolResultEvent):
         return ToolCallResult(
             tool_call_id=event.result.tool_call_id,
-            result=_to_jsonable(event.result.content),
+            result=event.result.content,
         )
 
     if isinstance(event, AgentRunResultEvent):
         # Persist the response ModelMessage (last entry in result.new_messages()).
-        new_msgs = event.result.new_messages()
-        response_msg = new_msgs[-1]
-        payload_bytes = ModelMessagesTypeAdapter.dump_json([response_msg])
-        # dump_json returns bytes wrapping a list — unwrap to the single dict.
-        payload = json.loads(payload_bytes.decode())[0]
+        response_msg = event.result.new_messages()[-1]
+        payload = ModelMessagesTypeAdapter.dump_python([response_msg], mode="json")[0]
         return AgentDone(payload=payload)
 
     # Drop: PartStartEvent (non-actionable), FinalResultEvent (informational only).
@@ -80,17 +77,7 @@ def pydantic_ai_to_agent_event(event: Any) -> AgentStreamEvent | None:  # noqa: 
     return None
 
 
-def _to_jsonable(value: Any) -> dict[str, Any]:  # noqa: ANN401
-    """Best-effort: tool result content is usually a dict, str, or list — wrap non-dicts."""
-    if isinstance(value, dict):
-        return value
-    return {"value": value}
-
-
-def chat_message_to_response(msg: ChatMessage) -> ChatMessageResponse:
-    return ChatMessageResponse(
-        id=msg.id,
-        kind=msg.kind,
-        payload=msg.payload,
-        created_at=msg.created_at,
-    )
+class ChatMessageMapper:
+    @staticmethod
+    def to_api_response(msg: ChatMessage) -> ChatMessageResponse:
+        return ChatMessageResponse.model_validate(asdict(msg))

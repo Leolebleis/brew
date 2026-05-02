@@ -91,10 +91,7 @@ async def test_stream_message_on_mid_stream_error_keeps_user_row_no_assistant_ro
     repo.append = AsyncMock(return_value=user_msg)
 
     # Agent raises after yielding one event.
-    agent = make_fake_chat_agent(
-        [TextDelta(text="partial...")],
-        raise_after=1,
-    )
+    agent = make_fake_chat_agent([TextDelta(text="partial...")], raise_at_end=True)
     service = ChatService(repo=repo, agent=agent)
 
     events = [ev async for ev in service.stream_message("default", "hi")]
@@ -157,7 +154,7 @@ async def test_get_thread_full_page_returns_next_before_id() -> None:
 
 async def test_get_thread_unknown_before_id_raises_not_found() -> None:
     repo = AsyncMock()
-    repo.get_message = AsyncMock(return_value=None)
+    repo.get_cursor = AsyncMock(return_value=None)
     service = ChatService(repo=repo, agent=make_fake_chat_agent([]))
 
     with pytest.raises(NotFoundError) as exc_info:
@@ -165,3 +162,14 @@ async def test_get_thread_unknown_before_id_raises_not_found() -> None:
 
     assert exc_info.value.resource_kind == "chat_message"
     assert exc_info.value.resource_id == "missing-uuid"
+
+
+async def test_get_thread_passes_cursor_through_to_repo() -> None:
+    repo = AsyncMock()
+    repo.get_cursor = AsyncMock(return_value=("2026-05-02T12:00:00+00:00", 42))
+    repo.list_thread = AsyncMock(return_value=[])
+    service = ChatService(repo=repo, agent=make_fake_chat_agent([]))
+
+    await service.get_thread("default", limit=10, before_id="known-id")
+
+    repo.list_thread.assert_awaited_once_with("default", limit=10, before=("2026-05-02T12:00:00+00:00", 42))

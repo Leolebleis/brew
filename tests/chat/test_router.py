@@ -1,6 +1,5 @@
 """Chat router tests — POST SSE + GET JSON via TestClient."""
 
-import json
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
@@ -19,6 +18,7 @@ from brew.chat.model.event import (
 from brew.chat.model.message import ChatMessage
 from brew.errors import NotFoundError
 from brew.main import app
+from tests._sse import parse_sse
 
 
 def _make_message(**overrides) -> ChatMessage:
@@ -53,21 +53,6 @@ def _scripted_stream(events: list):
     return gen
 
 
-async def _consume_sse_text(text: str) -> list[tuple[str, dict]]:
-    """Parse a complete text/event-stream body into [(event_name, data_dict), ...]."""
-    events: list[tuple[str, dict]] = []
-    event_name: str | None = None
-    for line in text.splitlines():
-        if line.startswith("event: "):
-            event_name = line[len("event: ") :]
-        elif line.startswith("data: "):
-            data = json.loads(line[len("data: ") :])
-            assert event_name is not None
-            events.append((event_name, data))
-            event_name = None
-    return events
-
-
 async def test_post_text_only_emits_text_deltas_then_done(
     client: AsyncClient,
     mock_service: AsyncMock,
@@ -84,7 +69,7 @@ async def test_post_text_only_emits_text_deltas_then_done(
         assert resp.status_code == 200
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
-    events = await _consume_sse_text(body)
+    events = parse_sse(body.splitlines())
     names = [n for n, _ in events]
     assert names == ["text_delta", "text_delta", "done"]
     assert events[-1][1] == {"message_id": "asst-1"}
@@ -109,7 +94,7 @@ async def test_post_with_tool_emits_tool_call_sequence(
     async with client.stream("POST", "/chat/messages", json={"text": "brew now"}) as resp:
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
-    events = await _consume_sse_text(body)
+    events = parse_sse(body.splitlines())
     names = [n for n, _ in events]
     assert names == [
         "text_delta",
@@ -138,7 +123,7 @@ async def test_post_mid_stream_error_ends_with_error_no_done(
     async with client.stream("POST", "/chat/messages", json={"text": "hi"}) as resp:
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
-    events = await _consume_sse_text(body)
+    events = parse_sse(body.splitlines())
     names = [n for n, _ in events]
     assert "error" in names
     assert "done" not in names
@@ -182,11 +167,7 @@ async def test_get_unknown_before_id_returns_404(
     client: AsyncClient,
     mock_service: AsyncMock,
 ) -> None:
-    mock_service.get_thread.side_effect = NotFoundError(
-        message="Chat message foo not found",
-        resource_kind="chat_message",
-        resource_id="foo",
-    )
+    mock_service.get_thread.side_effect = NotFoundError.for_resource("chat_message", "foo")
 
     resp = await client.get("/chat/messages?before_id=foo")
 

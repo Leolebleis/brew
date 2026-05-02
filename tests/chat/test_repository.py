@@ -26,17 +26,17 @@ async def test_append_returns_full_entity(repo: ChatSqliteRepository) -> None:
     assert msg.created_at is not None
 
 
-async def test_get_message_returns_existing(repo: ChatSqliteRepository) -> None:
+async def test_get_cursor_returns_created_at_and_rowid(repo: ChatSqliteRepository) -> None:
     created = await repo.append(ChatMessageCreate(thread_id="t1", kind="request", payload={"i": 1}))
-    fetched = await repo.get_message(created.id)
-    assert fetched is not None
-    assert fetched.id == created.id
-    assert fetched.payload == {"i": 1}
+    cursor = await repo.get_cursor(created.id)
+    assert cursor is not None
+    created_at_iso, rowid = cursor
+    assert created_at_iso == to_iso(created.created_at)
+    assert rowid >= 1
 
 
-async def test_get_message_returns_none_for_unknown(repo: ChatSqliteRepository) -> None:
-    fetched = await repo.get_message("does-not-exist")
-    assert fetched is None
+async def test_get_cursor_returns_none_for_unknown(repo: ChatSqliteRepository) -> None:
+    assert await repo.get_cursor("does-not-exist") is None
 
 
 async def test_list_thread_returns_newest_first(repo: ChatSqliteRepository) -> None:

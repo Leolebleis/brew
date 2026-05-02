@@ -13,7 +13,7 @@ from brew.datetime_utils import from_iso, to_iso
 
 class ChatRepository(Protocol):
     async def append(self, create: ChatMessageCreate) -> ChatMessage: ...
-    async def get_message(self, message_id: str) -> ChatMessage | None: ...
+    async def get_cursor(self, message_id: str) -> tuple[str, int] | None: ...
     async def list_thread(
         self,
         thread_id: str,
@@ -58,13 +58,14 @@ class ChatSqliteRepository:
             created_at=created_at,
         )
 
-    async def get_message(self, message_id: str) -> ChatMessage | None:
+    async def get_cursor(self, message_id: str) -> tuple[str, int] | None:
+        """Return (created_at_iso, rowid) for paginating before this message, or None if unknown."""
         cursor = await self._conn.execute(
-            "SELECT * FROM chat_messages WHERE id = ?",
+            "SELECT created_at, rowid FROM chat_messages WHERE id = ?",
             (message_id,),
         )
         row = await cursor.fetchone()
-        return _row_to_chat_message(row) if row else None
+        return (row["created_at"], row["rowid"]) if row else None
 
     async def list_thread(
         self,
@@ -127,6 +128,6 @@ class ChatSqliteRepository:
             """,
             (thread_id, max_messages),
         )
-        rows = await cursor.fetchall()
+        rows = list(await cursor.fetchall())
         # Reverse to oldest-first (pydantic-ai expects chronological order).
-        return list(reversed([_row_to_chat_message(row) for row in rows]))
+        return [_row_to_chat_message(row) for row in reversed(rows)]

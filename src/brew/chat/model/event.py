@@ -36,7 +36,7 @@ class ToolCallDelta:
 @dataclass(frozen=True)
 class ToolCallResult:
     tool_call_id: str
-    result: dict[str, Any]
+    result: Any  # JSON-serializable: dict / str / list / None — preserved as-is on the wire
 
 
 @dataclass(frozen=True)
