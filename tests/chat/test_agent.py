@@ -8,6 +8,7 @@ from pydantic_ai.models.test import TestModel
 
 from brew.bags.service import BagService
 from brew.chat.agent import build_chat_agent
+from brew.chat.client import PydanticAiChatAgent
 from brew.chat.config import ChatSettings
 from brew.journal.service import JournalService
 
@@ -36,52 +37,51 @@ def bag_service() -> BagService:
     return AsyncMock(spec=BagService)
 
 
-def test_agent_builds_without_error(
+def test_returns_pydantic_ai_chat_agent(
     settings: ChatSettings,
     mcp_server: FastMCP,
     journal_service: JournalService,
     bag_service: BagService,
 ) -> None:
-    agent = build_chat_agent(
+    chat_agent = build_chat_agent(
         settings=settings,
         mcp_server=mcp_server,
         journal_service=journal_service,
         bag_service=bag_service,
     )
-    assert agent is not None
+    assert isinstance(chat_agent, PydanticAiChatAgent)
 
 
-def test_agent_registers_local_tools(
+def test_caches_both_instructions_and_tool_definitions(
     settings: ChatSettings,
     mcp_server: FastMCP,
     journal_service: JournalService,
     bag_service: BagService,
 ) -> None:
-    agent = build_chat_agent(
+    chat_agent = build_chat_agent(
         settings=settings,
         mcp_server=mcp_server,
         journal_service=journal_service,
         bag_service=bag_service,
     )
-    # _AgentFunctionToolset is always at index 0; its .tools dict is keyed by name
-    function_toolset = agent.toolsets[0]
-    tool_names = set(function_toolset.tools.keys())
-    assert "query_journal" in tool_names
-    assert "find_historical_bag" in tool_names
+    model_settings = chat_agent.inner.model_settings
+    assert model_settings is not None
+    assert model_settings.get("anthropic_cache_instructions") == "1h"
+    assert model_settings.get("anthropic_cache_tool_definitions") == "1h"
 
 
-async def test_agent_uses_test_model_for_simple_query(
+async def test_runs_with_test_model_override(
     settings: ChatSettings,
     mcp_server: FastMCP,
     journal_service: JournalService,
     bag_service: BagService,
 ) -> None:
-    agent = build_chat_agent(
+    chat_agent = build_chat_agent(
         settings=settings,
         mcp_server=mcp_server,
         journal_service=journal_service,
         bag_service=bag_service,
     )
-    with agent.override(model=TestModel(call_tools=[])):
-        result = await agent.run("hello")
+    with chat_agent.inner.override(model=TestModel(custom_output_text="hi")):
+        result = await chat_agent.inner.run("hello")
     assert result.output

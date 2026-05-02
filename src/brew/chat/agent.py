@@ -12,6 +12,7 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.toolsets.fastmcp import FastMCPToolset
 
 from brew.bags.service import BagService
+from brew.chat.client import PydanticAiChatAgent
 from brew.chat.config import ChatSettings
 from brew.chat.tools import make_find_historical_bag, make_query_journal
 from brew.journal.service import JournalService
@@ -31,12 +32,12 @@ def build_chat_agent(
     mcp_server: FastMCP,
     journal_service: JournalService,
     bag_service: BagService,
-) -> Agent:
+) -> PydanticAiChatAgent:
     model = AnthropicModel(
         settings.model,
         provider=AnthropicProvider(api_key=settings.anthropic_api_key.get_secret_value()),
     )
-    return Agent(
+    agent = Agent(
         model,
         instructions=_INSTRUCTIONS,
         toolsets=[FastMCPToolset(mcp_server)],
@@ -45,6 +46,8 @@ def build_chat_agent(
             make_find_historical_bag(bag_service),
         ],
         model_settings=AnthropicModelSettings(
+            anthropic_cache_instructions="1h",
             anthropic_cache_tool_definitions="1h",
         ),
     )
+    return PydanticAiChatAgent(agent=agent)
