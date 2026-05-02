@@ -143,11 +143,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     db_conn = await open_db(settings.database_path)
     await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA, CHAT_SCHEMA])
-    water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn))
-    bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
+    water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn), bus=bus)
+    bag_service = BagService(repo=BagSqliteRepository(conn=db_conn), bus=bus)
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
     _wire_event_subscribers(bus, broadcaster, journal_service, bag_service, water_service)
 
