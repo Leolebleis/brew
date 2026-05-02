@@ -29,7 +29,6 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
-from brew.chat.router import router as chat_router
 from brew.chat.schema import CHAT_SCHEMA
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
@@ -55,6 +54,7 @@ from brew.journal.repository import JournalSqliteRepository
 from brew.journal.router import router as journal_router
 from brew.journal.schema import JOURNAL_SCHEMA
 from brew.journal.service import JournalService
+from brew.terminal.router import router as terminal_router
 from brew.water.dependencies import get_water_service
 from brew.water.repository import WaterSqliteRepository
 from brew.water.router import router as water_router
@@ -239,23 +239,23 @@ _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
 _chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
 
 
-def _require_chat_enabled() -> None:
-    """404 the chat endpoints when chat (or its MCP dependency) isn't wired.
+def _require_terminal_enabled() -> None:
+    """404 the terminal endpoint when chat (or its MCP dependency) isn't wired.
 
-    Read at request time, not module load, so chat e2e tests can monkeypatch
-    `_chat_enabled` / `_mcp_enabled` to True after import. The wiring condition
-    must mirror `_app_lifespan`'s `if _chat_enabled and _mcp_enabled:` block —
-    if chat isn't wired in lifespan, the dependency stub raises
-    NotImplementedError on every call, which leaks as a 500.
+    Read at request time, not module load, so tests can monkeypatch
+    `_chat_enabled` / `_mcp_enabled` to True after import. Mirror the wiring
+    condition in the lifespan (`if _chat_enabled and _mcp_enabled:`); if
+    either is false the terminal endpoint must 404 cleanly rather than
+    fail mid-request.
     """
     if not (_chat_enabled and _mcp_enabled):
         raise HTTPException(status_code=404)
 
 
 app.include_router(
-    chat_router,
+    terminal_router,
     prefix="/api",
-    dependencies=[Depends(require_api_key), Depends(_require_chat_enabled)],
+    dependencies=[Depends(require_api_key), Depends(_require_terminal_enabled)],
 )
 
 if _mcp_enabled:
