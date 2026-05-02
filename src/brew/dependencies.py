@@ -1,12 +1,9 @@
 from functools import lru_cache
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, Query, Security, status
-from fastapi.security import APIKeyHeader
+from fastapi import Depends, Header, HTTPException, Query, status
 
 from brew.config import Settings
-
-api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
 
 
 @lru_cache(maxsize=1)
@@ -16,7 +13,9 @@ def get_settings() -> Settings:
 
 async def require_api_key(
     settings: Annotated[Settings, Depends(get_settings)],
-    header_key: Annotated[str | None, Security(api_key_header)] = None,
+    # Header() works on both HTTP and WebSocket routes; fastapi.security.APIKeyHeader
+    # is HTTP-only — it expects a Request object that WS routes don't provide.
+    header_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
     query_key: Annotated[str | None, Query(alias="api_key")] = None,
 ) -> None:
     if settings.api_key is None:

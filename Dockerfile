@@ -40,6 +40,11 @@ RUN useradd --create-home appuser
 USER appuser
 WORKDIR /app
 
+# Pre-create ~/.claude so the named volume inherits appuser ownership when
+# Docker first populates it from the image — otherwise the empty mount point
+# is root-owned and `claude login` can't write OAuth tokens.
+RUN mkdir -p /home/appuser/.claude
+
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
 
