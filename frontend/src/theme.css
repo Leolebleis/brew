@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+:root,
+[data-theme="light"] {
+  --color-bg: #FFFBEB;
+  --color-surface: #FFFFFF;
+  --color-fg: #0F172A;
+  --color-fg-muted: #78716C;
+  --color-border: #F2E6E2;
+  --color-primary: #9A3412;
+  --color-on-primary: #FFFFFF;
+  --color-accent: #F97316;
+  --color-success: #059669;
+  --color-destructive: #DC2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1A1410;
+    --color-surface: #2A1F18;
+    --color-fg: #F5E9D7;
+    --color-fg-muted: #A8A29E;
+    --color-border: #3A2A20;
+    --color-primary: #F97316;
+    --color-on-primary: #1A1410;
+    --color-accent: #FDBA74;
+    --color-success: #22C55E;
+    --color-destructive: #EF4444;
+  }
+}
+
+[data-theme="dark"] {
+  --color-bg: #1A1410;
+  --color-surface: #2A1F18;
+  --color-fg: #F5E9D7;
+  --color-fg-muted: #A8A29E;
+  --color-border: #3A2A20;
+  --color-primary: #F97316;
+  --color-on-primary: #1A1410;
+  --color-accent: #FDBA74;
+  --color-success: #22C55E;
+  --color-destructive: #EF4444;
+}
+
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-fg: var(--color-fg);
+  --color-fg-muted: var(--color-fg-muted);
+  --color-border: var(--color-border);
+  --color-primary: var(--color-primary);
+  --color-on-primary: var(--color-on-primary);
+  --color-accent: var(--color-accent);
+  --color-success: var(--color-success);
+  --color-destructive: var(--color-destructive);
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: -apple-system, system-ui, sans-serif;
+  margin: 0;
+}
