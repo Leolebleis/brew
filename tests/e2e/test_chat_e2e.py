@@ -14,7 +14,6 @@ from unittest.mock import Mock
 
 import pytest
 from asgi_lifespan import LifespanManager
-from brew.chat.model.event import TextDelta
 from fastmcp import FastMCP
 from fellow_aiden import FellowAiden
 from httpx import ASGITransport, AsyncClient
@@ -24,6 +23,7 @@ import brew.main
 from brew.aiden.dependencies import get_aiden_settings
 from brew.chat.config import get_chat_settings
 from brew.chat.dependencies import get_chat_service
+from brew.chat.model.event import TextDelta
 from brew.dependencies import get_settings
 from brew.errors import CloudUnreachableError
 from brew.main import app
