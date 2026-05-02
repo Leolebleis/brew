@@ -16,8 +16,12 @@ export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<
 }
 
 export class ApiError extends Error {
-  constructor(public status: number, public body: string) {
+  status: number;
+  body: string;
+  constructor(status: number, body: string) {
     super(`API error ${status}: ${body}`);
     this.name = "ApiError";
+    this.status = status;
+    this.body = body;
   }
 }
