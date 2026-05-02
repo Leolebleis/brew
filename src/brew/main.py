@@ -34,7 +34,13 @@ from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
 from brew.events.bus import EventBus
 from brew.events.dependencies import get_event_broadcaster
-from brew.events.domain import BrewCompleted, JournalEntryCreated
+from brew.events.domain import (
+    BagActivated,
+    BagFinished,
+    BrewCompleted,
+    JournalEntryCreated,
+    WaterRefilled,
+)
 from brew.events.poller import DeviceBrewingPoller
 from brew.events.router import router as events_router
 from brew.events.subscribers.bag_decrement import make_bag_decrement_handler
@@ -64,6 +70,10 @@ def _wire_event_subscribers(
     water_service: WaterService,
 ) -> None:
     bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
+    bus.subscribe(BrewCompleted, broadcaster.broadcast)
+    bus.subscribe(BagActivated, broadcaster.broadcast)
+    bus.subscribe(BagFinished, broadcaster.broadcast)
+    bus.subscribe(WaterRefilled, broadcaster.broadcast)
     bus.subscribe(BrewCompleted, make_journal_auto_log_handler(journal_service, bag_service))
     bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
     bus.subscribe(JournalEntryCreated, make_bag_decrement_handler(bag_service))
