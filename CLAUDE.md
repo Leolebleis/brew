@@ -18,6 +18,15 @@ coffee occasionally tangling itself up.
 - `src/brew/aiden/config.py` — `AidenSettings` (Fellow cloud creds)
 - `src/brew/aiden/dependencies.py` — `get_aiden_settings`, `build_fellow_client`
 - `src/brew/main.py` — composition root
+- `src/brew/chat/projections.py` — `ModelMessage → ThreadMessageLike` projection. Raw `payload` stays in DB; `GET /api/chat/messages` returns both `payload` (forward-compat) and `projected` (frontend consumes this)
+
+## Frontend
+
+React 19 + Vite 7 + TypeScript + Tailwind v4 + assistant-ui (0.12.28) + zustand + TanStack Query v5 + Radix. Lives under `frontend/`. Backend serves the built SPA via `StaticFiles` mount; gated on `frontend/dist/` existing. `BREW_FRONTEND_DIST` env var overrides the dist path for Docker (`--no-editable` installs break the relative-path heuristic). Dev proxy: `/api` → `localhost:8000`.
+
+Commands: `npm run dev`, `npm run build`, `npm run lint`, `npm run typecheck`, `npm run test`, `npm run e2e`.
+
+Folders under `frontend/src/`: `api/` (fetch + SSE wrappers), `chat/` (zustand store + SSE→store runtime + replay), `status/` (TanStack hooks + sticky header + SSE invalidation router), `brewnow/` (pre-flight sheet + brew-now POST), `rating/` (post-brew toast), `components/` (Button, Sheet, Toast, ThemeToggle), `theme.css`.
 
 ## Class naming convention
 
@@ -64,6 +73,7 @@ GitHub Actions on push/PR to `main` (`.github/workflows/ci.yml`):
 - `lint` — `uv run ruff check src/ tests/` + `uv run ruff format --check src/ tests/`
 - `type-check` — `uv run ty check src/`
 - `test` — `uv run pytest --cov --cov-report=xml -v` (Codecov upload, `fail_ci_if_error: false`)
+- `frontend` — `npm ci` + `lint` + `typecheck` + `test` + `build` (Node 22, in `frontend/` working dir)
 
 Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 
@@ -75,6 +85,7 @@ Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 - Dockerfile needs `git` in builder stage (for git+ dependency) and `--no-editable` flag
 - Use `docker-compose.override.yml` for custom networking (not tracked in git)
 - `/health` bypasses the `require_api_key` guard (guard is per-router, not app-level) so Docker HEALTHCHECK works without an API-key header
+- Dockerfile is multi-stage: Node frontend build → Python builder → runtime. `VITE_FELLOW_API_KEY` is forwarded as a build arg (`docker-compose.yml` reads `${FELLOW_API_KEY}` from `.env`) and baked into the SPA bundle at build time
 
 ## Gotchas
 
@@ -91,6 +102,12 @@ Uses `uv sync --frozen`; commit `uv.lock` after any dependency change.
 - Chat e2e tests via `LifespanManager(app)` must patch `_mcp_app` when forcing `_mcp_enabled=True` (use `mcp_server.http_app(path="/")`); smoke tests calling `_app_lifespan` directly don't need this
 - pydantic-ai `TestModel` defaults to `call_tools='all'` — use `call_tools=[]` in chat tests to avoid hitting mocked Fellow clients
 - Post-edit ruff hook strips imports that become temporarily unused between edits — re-add when you reintroduce the callsite
+- `npm run typecheck` MUST be `tsc -b --noEmit` (not bare `tsc --noEmit`) — the root tsconfig has `"files": []` and only project references, so without `-b` it checks nothing. CI's `npm run build` (which uses `tsc -b`) is the only thing that catches type errors otherwise
+- `@assistant-ui/react@0.12.28` doesn't export `Thread` — compose from `ThreadPrimitive` + `MessagePrimitive` + `ComposerPrimitive`. `Thread` lands in the `@assistant-ui/react-ui` companion package
+- `MessagePartPrimitive.Text` is a span ref-forwarder, NOT a `TextMessagePartComponent` — `MessagePrimitive.Parts` `components.Text` slot needs a function-component wrapper (see `App.tsx::TextPart`); don't inline
+- Vitest config must `exclude: ["e2e/**"]` when Playwright specs share the package — Vitest will otherwise collect and fail on `test()` calls from `@playwright/test`
+- JSDOM lacks `hasPointerCapture` — Radix Toast/Dialog tests crash without the polyfill in `frontend/src/test-setup.ts`
+- Frontend SSE auth uses `@microsoft/fetch-event-source` (the native `EventSource` can't send headers). Two helpers: `openSse` (GET, retries on disconnect) and `postSse` (POST, throws on error to suppress retry — wrong for one-shot chat turns)
 
 ## Testing
 
