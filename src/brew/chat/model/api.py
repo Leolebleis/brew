@@ -14,6 +14,7 @@ class ChatMessageResponse(BaseModel):
     id: str
     kind: Literal["request", "response"]
     payload: dict[str, Any]
+    projected: dict[str, Any] | None
     created_at: datetime
 
 

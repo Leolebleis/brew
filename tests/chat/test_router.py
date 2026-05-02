@@ -65,7 +65,7 @@ async def test_post_text_only_emits_text_deltas_then_done(
         ]
     )
 
-    async with client.stream("POST", "/chat/messages", json={"text": "hi"}) as resp:
+    async with client.stream("POST", "/api/chat/messages", json={"text": "hi"}) as resp:
         assert resp.status_code == 200
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
@@ -91,7 +91,7 @@ async def test_post_with_tool_emits_tool_call_sequence(
         ]
     )
 
-    async with client.stream("POST", "/chat/messages", json={"text": "brew now"}) as resp:
+    async with client.stream("POST", "/api/chat/messages", json={"text": "brew now"}) as resp:
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
     events = parse_sse(body.splitlines())
@@ -120,7 +120,7 @@ async def test_post_mid_stream_error_ends_with_error_no_done(
         ]
     )
 
-    async with client.stream("POST", "/chat/messages", json={"text": "hi"}) as resp:
+    async with client.stream("POST", "/api/chat/messages", json={"text": "hi"}) as resp:
         body = "".join([chunk async for chunk in resp.aiter_text()])
 
     events = parse_sse(body.splitlines())
@@ -132,7 +132,7 @@ async def test_post_mid_stream_error_ends_with_error_no_done(
 
 
 async def test_post_empty_text_returns_422(client: AsyncClient) -> None:
-    resp = await client.post("/chat/messages", json={"text": ""})
+    resp = await client.post("/api/chat/messages", json={"text": ""})
     assert resp.status_code == 422
 
 
@@ -143,12 +143,13 @@ async def test_get_no_cursor_returns_messages_and_next_before_id(
     msgs = [_make_message(id=f"m{i}") for i in range(3)]
     mock_service.get_thread = AsyncMock(return_value=(msgs, "m2"))
 
-    resp = await client.get("/chat/messages?limit=3")
+    resp = await client.get("/api/chat/messages?limit=3")
 
     assert resp.status_code == 200
     body = resp.json()
     assert [m["id"] for m in body["messages"]] == ["m0", "m1", "m2"]
     assert body["next_before_id"] == "m2"
+    assert "projected" in body["messages"][0]
     mock_service.get_thread.assert_awaited_once_with("default", limit=3, before_id=None)
 
 
@@ -158,7 +159,7 @@ async def test_get_with_before_id_passes_through(
 ) -> None:
     mock_service.get_thread = AsyncMock(return_value=([], None))
 
-    await client.get("/chat/messages?limit=10&before_id=some-uuid")
+    await client.get("/api/chat/messages?limit=10&before_id=some-uuid")
 
     mock_service.get_thread.assert_awaited_once_with("default", limit=10, before_id="some-uuid")
 
@@ -169,7 +170,7 @@ async def test_get_unknown_before_id_returns_404(
 ) -> None:
     mock_service.get_thread.side_effect = NotFoundError.for_resource("chat_message", "foo")
 
-    resp = await client.get("/chat/messages?before_id=foo")
+    resp = await client.get("/api/chat/messages?before_id=foo")
 
     assert resp.status_code == 404
     body = resp.json()
@@ -180,11 +181,11 @@ async def test_get_unknown_before_id_returns_404(
 async def test_get_default_limit_50(client: AsyncClient, mock_service: AsyncMock) -> None:
     mock_service.get_thread = AsyncMock(return_value=([], None))
 
-    await client.get("/chat/messages")
+    await client.get("/api/chat/messages")
 
     mock_service.get_thread.assert_awaited_once_with("default", limit=50, before_id=None)
 
 
 async def test_get_limit_over_max_returns_422(client: AsyncClient) -> None:
-    resp = await client.get("/chat/messages?limit=999")
+    resp = await client.get("/api/chat/messages?limit=999")
     assert resp.status_code == 422

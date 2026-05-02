@@ -1,6 +1,9 @@
 services:
   brew:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_FELLOW_API_KEY: ${FELLOW_API_KEY}
     container_name: brew
     restart: unless-stopped
     env_file: .env

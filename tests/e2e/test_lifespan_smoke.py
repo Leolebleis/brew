@@ -10,7 +10,7 @@ async def test_health_endpoint_reachable_through_lifespan(e2e_client: AsyncClien
 
 async def test_lifespan_ran_db_is_initialized(e2e_client: AsyncClient) -> None:
     """If the lifespan ran, water_state was seeded to 1500 mL by WATER_SCHEMA's INSERT OR IGNORE."""
-    response = await e2e_client.get("/water")
+    response = await e2e_client.get("/api/water")
     # The require_api_key guard is a no-op when FELLOW_API_KEY setting is None
     # (the default in tests). If this ever fails with 401, delete the
     # FELLOW_API_KEY env var via monkeypatch in the e2e_client fixture.

@@ -23,7 +23,7 @@ def _override_water_service(mock_water_service: AsyncMock):
 async def test_get_water_returns_200_with_payload(client: AsyncClient, mock_water_service: AsyncMock) -> None:
     mock_water_service.get_water.return_value = make_water(remaining_ml=850)
 
-    response = await client.get("/water")
+    response = await client.get("/api/water")
 
     assert response.status_code == 200
     data = response.json()
@@ -34,7 +34,7 @@ async def test_get_water_returns_200_with_payload(client: AsyncClient, mock_wate
 async def test_post_refill_returns_200(client: AsyncClient, mock_water_service: AsyncMock) -> None:
     mock_water_service.refill.return_value = None
 
-    response = await client.post("/water/refill")
+    response = await client.post("/api/water/refill")
 
     assert response.status_code == 200
     mock_water_service.refill.assert_awaited_once()

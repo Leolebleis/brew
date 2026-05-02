@@ -1,12 +1,14 @@
 import asyncio
 import logging
 import os
+import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
 import aiosqlite
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from brew.aiden.dependencies import build_fellow_client, get_aiden_settings
 from brew.aiden.device.client import FellowDeviceHttpClient
@@ -34,7 +36,13 @@ from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
 from brew.events.bus import EventBus
 from brew.events.dependencies import get_event_broadcaster
-from brew.events.domain import BrewCompleted, JournalEntryCreated
+from brew.events.domain import (
+    BagActivated,
+    BagFinished,
+    BrewCompleted,
+    JournalEntryCreated,
+    WaterRefilled,
+)
 from brew.events.poller import DeviceBrewingPoller
 from brew.events.router import router as events_router
 from brew.events.subscribers.bag_decrement import make_bag_decrement_handler
@@ -56,6 +64,15 @@ from brew.water.service import WaterService
 logger = logging.getLogger(__name__)
 
 
+_BROADCAST_EVENTS = (
+    JournalEntryCreated,
+    BrewCompleted,
+    BagActivated,
+    BagFinished,
+    WaterRefilled,
+)
+
+
 def _wire_event_subscribers(
     bus: EventBus,
     broadcaster: EventBroadcaster,
@@ -63,7 +80,8 @@ def _wire_event_subscribers(
     bag_service: BagService,
     water_service: WaterService,
 ) -> None:
-    bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
+    for event in _BROADCAST_EVENTS:
+        bus.subscribe(event, broadcaster.broadcast)
     bus.subscribe(BrewCompleted, make_journal_auto_log_handler(journal_service, bag_service))
     bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
     bus.subscribe(JournalEntryCreated, make_bag_decrement_handler(bag_service))
@@ -143,11 +161,11 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     db_conn = await open_db(settings.database_path)
     await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA, CHAT_SCHEMA])
-    water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn))
-    bag_service = BagService(repo=BagSqliteRepository(conn=db_conn))
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
+    water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn), bus=bus)
+    bag_service = BagService(repo=BagSqliteRepository(conn=db_conn), bus=bus)
     journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
     _wire_event_subscribers(bus, broadcaster, journal_service, bag_service, water_service)
 
@@ -207,14 +225,14 @@ register_exception_handlers(app)
 # be reachable without auth — otherwise auth misconfig is indistinguishable
 # from a dead app. Domain routers apply the guard individually.
 app.include_router(health_router)
-app.include_router(device_router, dependencies=[Depends(require_api_key)])
-app.include_router(profiles_router, dependencies=[Depends(require_api_key)])
-app.include_router(schedules_router, dependencies=[Depends(require_api_key)])
-app.include_router(water_router, dependencies=[Depends(require_api_key)])
-app.include_router(bags_router, dependencies=[Depends(require_api_key)])
-app.include_router(journal_router, dependencies=[Depends(require_api_key)])
-app.include_router(events_router, dependencies=[Depends(require_api_key)])
-app.include_router(chat_router, dependencies=[Depends(require_api_key)])
+app.include_router(device_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(profiles_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(schedules_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(water_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(bags_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(journal_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(events_router, prefix="/api", dependencies=[Depends(require_api_key)])
+app.include_router(chat_router, prefix="/api", dependencies=[Depends(require_api_key)])
 
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
@@ -231,6 +249,24 @@ if _mcp_enabled:
     _mcp_api_key = os.getenv("FELLOW_API_KEY")
     _mcp_app.add_middleware(McpApiKeyMiddleware, api_key=_mcp_api_key)
     app.mount("/mcp", _mcp_app)
+
+# Frontend SPA mount — must come AFTER all routers/mounts so `/health`, `/api/*`,
+# and `/mcp` take precedence. `html=True` falls back to index.html for unknown
+# paths (SPA client-side routing). Gated on dist/ existing so tests don't need
+# a built frontend.
+#
+# BREW_FRONTEND_DIST overrides the relative path heuristic. Required in Docker
+# (`--no-editable` install puts brew/main.py inside .venv site-packages, so the
+# parent.parent.parent walk doesn't reach /app/frontend/dist). Local dev leaves
+# it unset and relies on the source-tree-relative path.
+_FRONTEND_DIST_ENV = os.environ.get("BREW_FRONTEND_DIST")
+_FRONTEND_DIST = (
+    pathlib.Path(_FRONTEND_DIST_ENV)
+    if _FRONTEND_DIST_ENV
+    else pathlib.Path(__file__).parent.parent.parent / "frontend" / "dist"
+)
+if _FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
 
 
 @app.exception_handler(Exception)

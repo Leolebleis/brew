@@ -72,7 +72,7 @@ async def test_create_with_active_bag_defaults(
         dose_grams=21,
     )
 
-    response = await client.post("/journal", json={})
+    response = await client.post("/api/journal", json={})
 
     assert response.status_code == 201
     body = response.json()
@@ -111,7 +111,7 @@ async def test_create_with_explicit_bag_id(
         dose_grams=31,
     )
 
-    response = await client.post("/journal", json={"bag_id": "bag-chosen"})
+    response = await client.post("/api/journal", json={"bag_id": "bag-chosen"})
 
     assert response.status_code == 201
     mock_bag_service.get.assert_awaited_once_with("bag-chosen")
@@ -139,7 +139,7 @@ async def test_create_no_bag_minimal_payload(
         dose_grams=0,
     )
 
-    response = await client.post("/journal", json={})
+    response = await client.post("/api/journal", json={})
 
     assert response.status_code == 201
     body = response.json()
@@ -175,7 +175,7 @@ async def test_create_overrides_fill_in(
         dose_grams=32,
     )
 
-    response = await client.post("/journal", json={"water_ml": 500})
+    response = await client.post("/api/journal", json={"water_ml": 500})
 
     assert response.status_code == 201
     call_arg = mock_repo.create.await_args.args[0]
