@@ -13,8 +13,16 @@ from brew.datetime_utils import from_iso, to_iso
 
 class ChatRepository(Protocol):
     async def append(self, create: ChatMessageCreate) -> ChatMessage: ...
-    async def list_thread(self, thread_id: str) -> list[ChatMessage]: ...
+    async def get_message(self, message_id: str) -> ChatMessage | None: ...
+    async def list_thread(
+        self,
+        thread_id: str,
+        *,
+        limit: int = 50,
+        before: tuple[str, int] | None = None,
+    ) -> list[ChatMessage]: ...
     async def list_threads(self) -> list[str]: ...
+    async def load_history(self, thread_id: str, *, max_messages: int = 200) -> list[ChatMessage]: ...
 
 
 def _row_to_chat_message(row: aiosqlite.Row) -> ChatMessage:
@@ -50,12 +58,44 @@ class ChatSqliteRepository:
             created_at=created_at,
         )
 
-    async def list_thread(self, thread_id: str) -> list[ChatMessage]:
-        # rowid tiebreaker keeps insertion order stable when two rows share a created_at.
+    async def get_message(self, message_id: str) -> ChatMessage | None:
         cursor = await self._conn.execute(
-            "SELECT * FROM chat_messages WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC",
-            (thread_id,),
+            "SELECT * FROM chat_messages WHERE id = ?",
+            (message_id,),
         )
+        row = await cursor.fetchone()
+        return _row_to_chat_message(row) if row else None
+
+    async def list_thread(
+        self,
+        thread_id: str,
+        *,
+        limit: int = 50,
+        before: tuple[str, int] | None = None,
+    ) -> list[ChatMessage]:
+        """Newest-first, paginated. `before=(created_at_iso, rowid)` returns rows strictly older."""
+        if before is None:
+            cursor = await self._conn.execute(
+                """
+                SELECT * FROM chat_messages
+                WHERE thread_id = ?
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT ?
+                """,
+                (thread_id, limit),
+            )
+        else:
+            before_created_at, before_rowid = before
+            cursor = await self._conn.execute(
+                """
+                SELECT * FROM chat_messages
+                WHERE thread_id = ?
+                  AND (created_at, rowid) < (?, ?)
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT ?
+                """,
+                (thread_id, before_created_at, before_rowid, limit),
+            )
         rows = await cursor.fetchall()
         return [_row_to_chat_message(row) for row in rows]
 
@@ -71,3 +111,22 @@ class ChatSqliteRepository:
         )
         rows = await cursor.fetchall()
         return [row["thread_id"] for row in rows]
+
+    async def load_history(self, thread_id: str, *, max_messages: int = 200) -> list[ChatMessage]:
+        """Oldest-first, capped — for feeding pydantic-ai message_history.
+
+        If a thread has more than `max_messages` rows, the most recent
+        `max_messages` are kept (window slides as conversations grow).
+        """
+        cursor = await self._conn.execute(
+            """
+            SELECT * FROM chat_messages
+            WHERE thread_id = ?
+            ORDER BY created_at DESC, rowid DESC
+            LIMIT ?
+            """,
+            (thread_id, max_messages),
+        )
+        rows = await cursor.fetchall()
+        # Reverse to oldest-first (pydantic-ai expects chronological order).
+        return list(reversed([_row_to_chat_message(row) for row in rows]))
