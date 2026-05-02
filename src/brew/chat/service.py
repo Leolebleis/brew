@@ -1,13 +1,12 @@
 """Chat service — orchestrates the chat repository."""
 
-from pydantic_ai import Agent
-
+from brew.chat.client import ChatAgent
 from brew.chat.model.message import ChatMessage, ChatMessageCreate
 from brew.chat.repository import ChatRepository
 
 
 class ChatService:
-    def __init__(self, repo: ChatRepository, agent: Agent) -> None:
+    def __init__(self, repo: ChatRepository, agent: ChatAgent) -> None:
         self._repo = repo
         self._agent = agent
 
