@@ -28,12 +28,6 @@ from brew.dependencies import get_settings
 from brew.errors import CloudUnreachableError
 from brew.main import app
 
-# Removed by Task 12 once the router is mounted and the tests pass cleanly.
-pytestmark = pytest.mark.xfail(
-    strict=False,
-    reason="TDD anchor for PR-B; passes after Task 12 wires the chat router",
-)
-
 
 def _make_fellow_mock() -> Mock:
     fellow = Mock(spec=FellowAiden)
@@ -62,7 +56,9 @@ async def chat_e2e_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> As
     monkeypatch.setenv("FELLOW_ANTHROPIC_API_KEY", "sk-ant-test")
     monkeypatch.setattr(brew.main, "_chat_enabled", True)
     monkeypatch.setattr(brew.main, "_mcp_enabled", True)
-    monkeypatch.setattr(brew.main, "_mcp_server", FastMCP("test-mcp"), raising=False)
+    mcp_server = FastMCP("test-mcp")
+    monkeypatch.setattr(brew.main, "_mcp_server", mcp_server, raising=False)
+    monkeypatch.setattr(brew.main, "_mcp_app", mcp_server.http_app(path="/"), raising=False)
 
     fellow_mock = _make_fellow_mock()
     monkeypatch.setattr("brew.aiden.dependencies.build_fellow_client", lambda: fellow_mock)
@@ -75,9 +71,9 @@ async def chat_e2e_client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> As
     async with LifespanManager(app) as manager:
         # After lifespan boot, grab the wired ChatService and swap its agent's
         # underlying pydantic-ai model with TestModel for the duration of this test.
-        chat_service = manager.app.dependency_overrides[get_chat_service]()
+        chat_service = app.dependency_overrides[get_chat_service]()
         with chat_service._agent.inner.override(  # noqa: SLF001
-            model=TestModel(custom_output_text="Hello from the test model.")
+            model=TestModel(custom_output_text="Hello from the test model.", call_tools=[])
         ):
             transport = ASGITransport(app=manager.app)
             async with AsyncClient(transport=transport, base_url="http://test") as client:
