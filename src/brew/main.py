@@ -5,7 +5,6 @@ import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
-import aiosqlite
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -29,7 +28,6 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
-from brew.chat.schema import CHAT_SCHEMA
 from brew.db import init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
@@ -117,29 +115,6 @@ def _register_domain_mcp(
     register_journal_mcp(_mcp_server, journal_service)
 
 
-async def _wire_chat(
-    app: FastAPI,
-    db_conn: aiosqlite.Connection,
-    journal_service: JournalService,
-    bag_service: BagService,
-) -> None:
-    from brew.chat.agent import build_chat_agent  # noqa: PLC0415
-    from brew.chat.config import get_chat_settings  # noqa: PLC0415
-    from brew.chat.dependencies import get_chat_service  # noqa: PLC0415
-    from brew.chat.repository import ChatSqliteRepository  # noqa: PLC0415
-    from brew.chat.service import ChatService  # noqa: PLC0415
-
-    chat_settings = get_chat_settings()
-    chat_agent = build_chat_agent(
-        settings=chat_settings,
-        mcp_server=_mcp_server,
-        journal_service=journal_service,
-        bag_service=bag_service,
-    )
-    chat_service = ChatService(repo=ChatSqliteRepository(conn=db_conn), agent=chat_agent)
-    app.dependency_overrides[get_chat_service] = lambda: chat_service
-
-
 @asynccontextmanager
 async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     settings = get_settings()
@@ -160,7 +135,7 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     )
 
     db_conn = await open_db(settings.database_path)
-    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA, CHAT_SCHEMA])
+    await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
@@ -189,9 +164,6 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
     if _mcp_enabled:
         _register_aiden_mcp(device_service, profile_service, schedule_service, brew_now_service)
         _register_domain_mcp(water_service, bag_service, journal_service)
-
-    if _chat_enabled and _mcp_enabled:
-        await _wire_chat(app, db_conn, journal_service, bag_service)
 
     try:
         yield

@@ -19,7 +19,6 @@ def _set_test_env(monkeypatch: pytest.MonkeyPatch) -> None:
     # monkeypatch.setenv to override.
     monkeypatch.setenv("FELLOW_CHAT_ENABLED", "false")
     monkeypatch.setenv("FELLOW_MCP_ENABLED", "false")
-    monkeypatch.delenv("FELLOW_ANTHROPIC_API_KEY", raising=False)
     get_settings.cache_clear()
     get_aiden_settings.cache_clear()
 
