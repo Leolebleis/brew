@@ -248,7 +248,17 @@ if _mcp_enabled:
 # and `/mcp` take precedence. `html=True` falls back to index.html for unknown
 # paths (SPA client-side routing). Gated on dist/ existing so tests don't need
 # a built frontend.
-_FRONTEND_DIST = pathlib.Path(__file__).parent.parent.parent / "frontend" / "dist"
+#
+# BREW_FRONTEND_DIST overrides the relative path heuristic. Required in Docker
+# (`--no-editable` install puts brew/main.py inside .venv site-packages, so the
+# parent.parent.parent walk doesn't reach /app/frontend/dist). Local dev leaves
+# it unset and relies on the source-tree-relative path.
+_FRONTEND_DIST_ENV = os.environ.get("BREW_FRONTEND_DIST")
+_FRONTEND_DIST = (
+    pathlib.Path(_FRONTEND_DIST_ENV)
+    if _FRONTEND_DIST_ENV
+    else pathlib.Path(__file__).parent.parent.parent / "frontend" / "dist"
+)
 if _FRONTEND_DIST.is_dir():
     app.mount("/", StaticFiles(directory=str(_FRONTEND_DIST), html=True), name="frontend")
 
