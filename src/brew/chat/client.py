@@ -1,16 +1,12 @@
-"""Chat agent — Protocol + pydantic-ai concrete impl.
-
-`ChatAgent` is the seam between `ChatService` and pydantic-ai. The service
-yields `ChatStreamEvent`s on the wire; the Protocol yields `AgentStreamEvent`s
-(includes `AgentDone(payload)` for the service to persist before emitting
-`Done(message_id)` to the wire).
-"""
+"""Chat agent — Protocol + pydantic-ai concrete impl."""
 
 from collections.abc import AsyncIterator
 from typing import Any, Protocol
 
 from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessagesTypeAdapter
 
+from brew.chat.mapper import pydantic_ai_to_agent_event
 from brew.chat.model.event import AgentStreamEvent
 
 
@@ -23,11 +19,7 @@ class ChatAgent(Protocol):
 
 
 class PydanticAiChatAgent:
-    """Concrete `ChatAgent` impl wrapping a pydantic-ai `Agent`.
-
-    Implementation lands in Task 7. Public attribute `inner` exposes the
-    underlying pydantic-ai Agent for tests + lifespan model overrides.
-    """
+    """Concrete `ChatAgent` impl wrapping a pydantic-ai `Agent`."""
 
     def __init__(self, agent: Agent) -> None:
         self._agent = agent
@@ -39,9 +31,14 @@ class PydanticAiChatAgent:
 
     async def stream(
         self,
-        prompt: str,  # noqa: ARG002
-        history: list[dict[str, Any]],  # noqa: ARG002
+        prompt: str,
+        history: list[dict[str, Any]],
     ) -> AsyncIterator[AgentStreamEvent]:
-        msg = "PydanticAiChatAgent.stream not yet implemented (Task 7)"
-        raise NotImplementedError(msg)
-        yield  # pragma: no cover — makes mypy/ty happy: function is async generator
+        # Deserialize raw payloads to typed ModelMessage list. The adapter
+        # validates a list-of-messages.
+        message_history = ModelMessagesTypeAdapter.validate_python(history) if history else []
+
+        async for event in self._agent.run_stream_events(prompt, message_history=message_history):
+            mapped = pydantic_ai_to_agent_event(event)
+            if mapped is not None:
+                yield mapped
