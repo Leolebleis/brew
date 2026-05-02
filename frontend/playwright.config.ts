@@ -1,0 +1,16 @@
+import { defineConfig } from "@playwright/test";
+
+export default defineConfig({
+  testDir: "./e2e",
+  use: {
+    baseURL: "http://localhost:5173",
+  },
+  webServer: [
+    {
+      command: "VITE_FELLOW_API_KEY=dev npm run dev",
+      url: "http://localhost:5173",
+      reuseExistingServer: true,
+      timeout: 30_000,
+    },
+  ],
+});
