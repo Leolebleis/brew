@@ -9,6 +9,17 @@ export interface SseHandlers {
   signal?: AbortSignal;
 }
 
+export function decodeSseMessage(
+  ev: EventSourceMessage,
+): { name: string; data: unknown } | null {
+  if (!ev.event) return null;
+  try {
+    return { name: ev.event, data: JSON.parse(ev.data) };
+  } catch {
+    return null; // keepalive comment or unparseable
+  }
+}
+
 export async function openSse(path: string, h: SseHandlers): Promise<void> {
   await fetchEventSource(`${API_BASE}${path}`, {
     method: "GET",

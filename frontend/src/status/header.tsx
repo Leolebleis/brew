@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 import { useDevice, useActiveBag, useWater } from "./hooks";
 import { Button } from "../components/button";
 import { ThemeToggle } from "../components/theme-toggle";
-import { apiFetch } from "../api/client";
+import { apiJson } from "../api/client";
+import { BREW_POLL_UNTIL_KEY } from "../brewnow/submit";
 
 interface Props {
   onBrew: () => void;
@@ -17,17 +18,36 @@ function fmtElapsed(startedAt: string): string {
 }
 
 function readPollFlag(): boolean {
-  const until = Number(sessionStorage.getItem("brew.pollUntil") ?? "0");
+  const until = Number(sessionStorage.getItem(BREW_POLL_UNTIL_KEY) ?? "0");
   return Date.now() < until;
 }
 
 function useDeviceShouldPoll(): boolean {
-  const [poll, setPoll] = useState<boolean>(() => readPollFlag());
+  // Re-read on every render so writes from other components in the same tab
+  // are picked up immediately (e.g. brewNow() flipping the flag right before
+  // this header re-renders for an unrelated reason).
+  const flag = readPollFlag();
+  const [, force] = useReducer((n: number) => n + 1, 0);
   useEffect(() => {
-    const tick = setInterval(() => setPoll(readPollFlag()), 1000);
-    return () => clearInterval(tick);
+    if (!flag) return;
+    const until = Number(sessionStorage.getItem(BREW_POLL_UNTIL_KEY) ?? "0");
+    const remaining = until - Date.now();
+    if (remaining <= 0) return;
+    // One-shot timer: when the poll window expires, force a re-render so the
+    // next readPollFlag() returns false.
+    const t = setTimeout(force, remaining);
+    return () => clearTimeout(t);
+  }, [flag]);
+  return flag;
+}
+
+function Elapsed({ startedAt }: { startedAt: string }) {
+  const [, force] = useReducer((n: number) => n + 1, 0);
+  useEffect(() => {
+    const i = setInterval(force, 1000);
+    return () => clearInterval(i);
   }, []);
-  return poll;
+  return <>{fmtElapsed(startedAt)}</>;
 }
 
 export function StatusHeader({ onBrew }: Props) {
@@ -38,22 +58,19 @@ export function StatusHeader({ onBrew }: Props) {
   const activeBag = useActiveBag();
   const water = useWater();
 
-  const [, tick] = useState(0);
-  useEffect(() => {
-    if (!device.data?.brewing) return;
-    const i = setInterval(() => tick((n) => n + 1), 1000);
-    return () => clearInterval(i);
-  }, [device.data?.brewing]);
-
   const refillWater = async () => {
-    await apiFetch("/water/refill", { method: "POST" });
+    await apiJson<unknown>("/water/refill", { method: "POST" });
   };
 
-  const brewState = device.data?.brewing
-    ? device.data.brew_started_at
-      ? `Brewing ${fmtElapsed(device.data.brew_started_at)}`
-      : "Brewing…"
-    : "Idle";
+  const renderBrewState = () => {
+    if (!device.data?.brewing) return "Idle";
+    if (!device.data.brew_started_at) return "Brewing…";
+    return (
+      <>
+        Brewing <Elapsed startedAt={device.data.brew_started_at} />
+      </>
+    );
+  };
 
   const bagText = activeBag.data
     ? `${activeBag.data.name} · ${activeBag.data.remaining_grams} g`
@@ -72,7 +89,7 @@ export function StatusHeader({ onBrew }: Props) {
         >
           Brew
         </span>
-        <span>{brewState}</span>
+        <span>{renderBrewState()}</span>
         <span style={{ color: "var(--color-fg-muted)" }}>·</span>
         <span>{bagText}</span>
         <span style={{ color: "var(--color-fg-muted)" }}>·</span>

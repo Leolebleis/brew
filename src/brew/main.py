@@ -64,6 +64,15 @@ from brew.water.service import WaterService
 logger = logging.getLogger(__name__)
 
 
+_BROADCAST_EVENTS = (
+    JournalEntryCreated,
+    BrewCompleted,
+    BagActivated,
+    BagFinished,
+    WaterRefilled,
+)
+
+
 def _wire_event_subscribers(
     bus: EventBus,
     broadcaster: EventBroadcaster,
@@ -71,11 +80,8 @@ def _wire_event_subscribers(
     bag_service: BagService,
     water_service: WaterService,
 ) -> None:
-    bus.subscribe(JournalEntryCreated, broadcaster.broadcast)
-    bus.subscribe(BrewCompleted, broadcaster.broadcast)
-    bus.subscribe(BagActivated, broadcaster.broadcast)
-    bus.subscribe(BagFinished, broadcaster.broadcast)
-    bus.subscribe(WaterRefilled, broadcaster.broadcast)
+    for event in _BROADCAST_EVENTS:
+        bus.subscribe(event, broadcaster.broadcast)
     bus.subscribe(BrewCompleted, make_journal_auto_log_handler(journal_service, bag_service))
     bus.subscribe(JournalEntryCreated, make_water_decrement_handler(water_service))
     bus.subscribe(JournalEntryCreated, make_bag_decrement_handler(bag_service))

@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { openSse } from "../api/sse";
+import { decodeSseMessage, openSse } from "../api/sse";
+import { StatusEvent } from "./events";
 import { handleStatusEvent } from "./hooks";
 
 export function startStatusEventListener(
@@ -10,16 +11,11 @@ export function startStatusEventListener(
   void openSse("/events", {
     signal,
     onMessage: (ev) => {
-      if (!ev.event) return;
-      let data: unknown;
-      try {
-        data = JSON.parse(ev.data);
-      } catch {
-        return;
-      }
-      handleStatusEvent(qc, ev.event, data);
-      if (ev.event === "JournalEntryCreated") {
-        const d = data as { entry_id?: string };
+      const decoded = decodeSseMessage(ev);
+      if (!decoded) return;
+      handleStatusEvent(qc, decoded.name, decoded.data);
+      if (decoded.name === StatusEvent.JournalEntryCreated) {
+        const d = decoded.data as { entry_id?: string };
         if (d.entry_id) onJournalEntry(d.entry_id);
       }
     },

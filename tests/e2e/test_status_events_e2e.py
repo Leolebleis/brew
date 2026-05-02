@@ -7,10 +7,7 @@ because httpx.ASGITransport buffers long-lived SSE streams indefinitely.
 """
 
 import asyncio
-import contextlib
-import json
 from pathlib import Path
-from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -20,60 +17,7 @@ from httpx import ASGITransport, AsyncClient
 from brew.aiden.dependencies import get_aiden_settings
 from brew.dependencies import get_settings
 from brew.main import app
-
-
-def _events_scope() -> dict[str, Any]:
-    return {
-        "type": "http",
-        "asgi": {"version": "3.0", "spec_version": "2.3"},
-        "http_version": "1.1",
-        "scheme": "http",
-        "method": "GET",
-        "path": "/api/events",
-        "raw_path": b"/api/events",
-        "query_string": b"",
-        "headers": [],
-        "server": ("test", 80),
-        "client": ("test", 1234),
-        "root_path": "",
-    }
-
-
-async def _wait_for_event(send_queue: asyncio.Queue, expected_name: str) -> dict[str, Any]:
-    """Drain ASGI send messages until an SSE frame with `event: <expected_name>` arrives."""
-    accumulated = b""
-    async with asyncio.timeout(5.0):
-        while True:
-            msg = await send_queue.get()
-            if msg["type"] == "http.response.start":
-                assert msg["status"] == 200
-                continue
-            if msg["type"] != "http.response.body":
-                continue
-            accumulated += msg.get("body", b"")
-            frames = accumulated.split(b"\r\n\r\n")
-            accumulated = frames[-1]
-            for frame in frames[:-1]:
-                event_name: str | None = None
-                data_payload: str | None = None
-                for line in frame.split(b"\r\n"):
-                    if line.startswith(b"event:"):
-                        event_name = line.removeprefix(b"event:").strip().decode()
-                    elif line.startswith(b"data:"):
-                        data_payload = line.removeprefix(b"data:").strip().decode()
-                if event_name == expected_name and data_payload is not None:
-                    with contextlib.suppress(json.JSONDecodeError):
-                        return json.loads(data_payload)
-
-
-async def _close_asgi_task(receive_queue: asyncio.Queue, app_task: asyncio.Task) -> None:
-    await receive_queue.put({"type": "http.disconnect"})
-    try:
-        await asyncio.wait_for(app_task, timeout=2.0)
-    except (TimeoutError, asyncio.CancelledError):
-        app_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await app_task
+from tests.e2e.conftest import close_asgi_task, events_scope, wait_for_sse_event
 
 
 def _bag_payload(**overrides: object) -> dict[str, object]:
@@ -133,7 +77,7 @@ async def test_status_action_broadcasts_event(
             await send_queue.put(message)
 
         await receive_queue.put({"type": "http.request", "body": b"", "more_body": False})
-        app_task = asyncio.create_task(asgi_app(_events_scope(), receive, send))
+        app_task = asyncio.create_task(asgi_app(events_scope(), receive, send))
 
         # Wait for the response start so the connection is registered with the broadcaster.
         # The first message from sse_starlette is http.response.start; once we see it,
@@ -154,7 +98,7 @@ async def test_status_action_broadcasts_event(
                     resp = await http.post("/api/water/refill")
                     assert resp.status_code == 200
 
-            payload = await _wait_for_event(send_queue, expected_event)
+            payload = await wait_for_sse_event(send_queue, expected_event)
             if expected_event == "BagActivated":
                 assert payload["bag_id"] == bag_id
                 assert payload["name"] == "Daybreak"
@@ -163,4 +107,4 @@ async def test_status_action_broadcasts_event(
             elif expected_event == "WaterRefilled":
                 assert payload["remaining_ml"] == 1500
         finally:
-            await _close_asgi_task(receive_queue, app_task)
+            await close_asgi_task(receive_queue, app_task)

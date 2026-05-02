@@ -4,8 +4,10 @@ The pydantic-ai event mapper is pure; tests fabricate event instances
 directly without invoking a model.
 """
 
+import logging
 from typing import Any
 
+from pydantic import ValidationError
 from pydantic_ai import AgentRunResultEvent
 from pydantic_ai.messages import (
     FinalResultEvent,
@@ -31,6 +33,8 @@ from brew.chat.model.event import (
 )
 from brew.chat.model.message import ChatMessage
 from brew.chat.projections import project_message
+
+logger = logging.getLogger(__name__)
 
 
 def pydantic_ai_to_agent_event(event: Any) -> AgentStreamEvent | None:  # noqa: ANN401, PLR0911
@@ -85,7 +89,10 @@ class ChatMessageMapper:
         try:
             messages = ModelMessagesTypeAdapter.validate_python([msg.payload])
             projected = project_message(messages[0]) if messages else None
-        except Exception:  # noqa: BLE001 — projection is best-effort
+        except (ValidationError, ValueError) as exc:
+            # Stored payload doesn't match the current pydantic-ai schema —
+            # log so we notice shape drift, but stay best-effort for callers.
+            logger.warning("chat projection failed for message %s: %s", msg.id, exc)
             projected = None
         return ChatMessageResponse(
             id=msg.id,

@@ -34,6 +34,20 @@ function patchLast(state: ChatState, fn: (msg: ThreadMessage) => ThreadMessage):
   return [...state.messages.slice(0, -1), fn(last)];
 }
 
+function appendOrExtendStreamPart(
+  state: ChatState,
+  partType: "text" | "reasoning",
+  text: string,
+): ThreadMessage[] {
+  return patchLast(state, (m) => {
+    const last = m.content.at(-1);
+    if (last?.type === partType) {
+      return { ...m, content: [...m.content.slice(0, -1), { ...last, text: last.text + text }] };
+    }
+    return { ...m, content: [...m.content, { type: partType, text }] };
+  });
+}
+
 export const useChatStore = create<ChatState>((set) => ({
   messages: [],
   appendUserMessage: (text) =>
@@ -48,25 +62,9 @@ export const useChatStore = create<ChatState>((set) => ({
       messages: [...s.messages, { role: "assistant", content: [], status: "streaming" }],
     })),
   appendAssistantText: (text) =>
-    set((s) => ({
-      messages: patchLast(s, (m) => {
-        const last = m.content.at(-1);
-        if (last?.type === "text") {
-          return { ...m, content: [...m.content.slice(0, -1), { ...last, text: last.text + text }] };
-        }
-        return { ...m, content: [...m.content, { type: "text", text }] };
-      }),
-    })),
+    set((s) => ({ messages: appendOrExtendStreamPart(s, "text", text) })),
   appendThinking: (text) =>
-    set((s) => ({
-      messages: patchLast(s, (m) => {
-        const last = m.content.at(-1);
-        if (last?.type === "reasoning") {
-          return { ...m, content: [...m.content.slice(0, -1), { ...last, text: last.text + text }] };
-        }
-        return { ...m, content: [...m.content, { type: "reasoning", text }] };
-      }),
-    })),
+    set((s) => ({ messages: appendOrExtendStreamPart(s, "reasoning", text) })),
   appendToolCall: (tool_call_id, tool_name) =>
     set((s) => ({
       messages: patchLast(s, (m) => ({

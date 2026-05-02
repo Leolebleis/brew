@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ToastItem } from "../components/toast";
-import { apiFetch } from "../api/client";
+import { apiJson } from "../api/client";
 
 interface Props {
   entryId: string;
@@ -14,7 +14,7 @@ export function RatingToast({ entryId, open, onClose }: Props) {
   const rate = async (n: number) => {
     setSubmitting(true);
     try {
-      await apiFetch(`/journal/${entryId}`, {
+      await apiJson<unknown>(`/journal/${entryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rating: n }),

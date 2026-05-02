@@ -16,10 +16,7 @@ Approach:
 """
 
 import asyncio
-import contextlib
-import json
 from pathlib import Path
-from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -29,6 +26,7 @@ from fellow_aiden import FellowAiden
 from brew.aiden.dependencies import get_aiden_settings
 from brew.dependencies import get_settings
 from brew.main import app
+from tests.e2e.conftest import close_asgi_task, events_scope, read_first_sse_payload
 
 
 @pytest.fixture
@@ -43,56 +41,6 @@ def events_fellow_mock() -> Mock:
         "brewingProfileId": "p-1",
     }
     return fellow
-
-
-def _events_scope() -> dict[str, Any]:
-    return {
-        "type": "http",
-        "asgi": {"version": "3.0", "spec_version": "2.3"},
-        "http_version": "1.1",
-        "scheme": "http",
-        "method": "GET",
-        "path": "/api/events",
-        "raw_path": b"/api/events",
-        "query_string": b"",
-        "headers": [],
-        "server": ("test", 80),
-        "client": ("test", 1234),
-        "root_path": "",
-    }
-
-
-async def _read_sse_payload(send_queue: asyncio.Queue) -> dict[str, Any]:
-    """Drain ASGI send messages until a JSON `data:` SSE line decodes successfully."""
-    start = await asyncio.wait_for(send_queue.get(), timeout=5.0)
-    assert start["type"] == "http.response.start"
-    assert start["status"] == 200
-
-    accumulated = b""
-    async with asyncio.timeout(5.0):
-        while True:
-            msg = await send_queue.get()
-            if msg["type"] != "http.response.body":
-                continue
-            accumulated += msg.get("body", b"")
-            for line in accumulated.split(b"\n"):
-                if not line.startswith(b"data:"):
-                    continue
-                body = line.removeprefix(b"data:").strip()
-                try:
-                    return json.loads(body)
-                except json.JSONDecodeError:
-                    continue
-
-
-async def _close_asgi_task(receive_queue: asyncio.Queue, app_task: asyncio.Task) -> None:
-    await receive_queue.put({"type": "http.disconnect"})
-    try:
-        await asyncio.wait_for(app_task, timeout=2.0)
-    except (TimeoutError, asyncio.CancelledError):
-        app_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError):
-            await app_task
 
 
 async def test_poller_triggers_journal_entry_via_sse(
@@ -136,13 +84,13 @@ async def test_poller_triggers_journal_entry_via_sse(
             await send_queue.put(message)
 
         await receive_queue.put({"type": "http.request", "body": b"", "more_body": False})
-        app_task = asyncio.create_task(asgi_app(_events_scope(), receive, send))
+        app_task = asyncio.create_task(asgi_app(events_scope(), receive, send))
 
         try:
-            payload = await _read_sse_payload(send_queue)
+            payload = await read_first_sse_payload(send_queue)
             assert payload["profile_id"] == "p-1"
             assert "entry_id" in payload
             assert payload["bag_id"] is None
             assert payload["water_ml"] == 0
         finally:
-            await _close_asgi_task(receive_queue, app_task)
+            await close_asgi_task(receive_queue, app_task)

@@ -1,5 +1,6 @@
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import { apiJson } from "../api/client";
+import { StatusEvent } from "./events";
 
 export interface DeviceState {
   brewing: boolean;
@@ -53,15 +54,15 @@ export function useWater() {
 export function handleStatusEvent(qc: QueryClient, name: string, data: unknown): void {
   void data;
   switch (name) {
-    case "BrewCompleted":
+    case StatusEvent.BrewCompleted:
       qc.invalidateQueries({ queryKey: ["device"] });
       return;
-    case "BagActivated":
-    case "BagFinished":
+    case StatusEvent.BagActivated:
+    case StatusEvent.BagFinished:
+      // ["bags"] is a prefix match — covers ["bags", "active"] automatically.
       qc.invalidateQueries({ queryKey: ["bags"] });
-      qc.invalidateQueries({ queryKey: ["bags", "active"] });
       return;
-    case "WaterRefilled":
+    case StatusEvent.WaterRefilled:
       qc.invalidateQueries({ queryKey: ["water"] });
       return;
     default:

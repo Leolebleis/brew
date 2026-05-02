@@ -10,12 +10,12 @@ describe("handleStatusEvent", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["device"] });
   });
 
-  it("BagActivated invalidates bags + active bag", () => {
+  it("BagActivated invalidates bags (prefix match covers active)", () => {
     const qc = new QueryClient();
     const spy = vi.spyOn(qc, "invalidateQueries");
     handleStatusEvent(qc, "BagActivated", { bag_id: "b1" });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["bags"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["bags", "active"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["bags", "active"] });
   });
 
   it("WaterRefilled invalidates water", () => {
@@ -25,12 +25,12 @@ describe("handleStatusEvent", () => {
     expect(spy).toHaveBeenCalledWith({ queryKey: ["water"] });
   });
 
-  it("BagFinished invalidates bags + active bag", () => {
+  it("BagFinished invalidates bags (prefix match covers active)", () => {
     const qc = new QueryClient();
     const spy = vi.spyOn(qc, "invalidateQueries");
     handleStatusEvent(qc, "BagFinished", { bag_id: "b1" });
     expect(spy).toHaveBeenCalledWith({ queryKey: ["bags"] });
-    expect(spy).toHaveBeenCalledWith({ queryKey: ["bags", "active"] });
+    expect(spy).not.toHaveBeenCalledWith({ queryKey: ["bags", "active"] });
   });
 
   it("unknown event is a no-op", () => {

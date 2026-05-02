@@ -1,5 +1,6 @@
+import { useCallback } from "react";
 import { useExternalStoreRuntime, type ThreadMessageLike } from "@assistant-ui/react";
-import { postSse } from "../api/sse";
+import { decodeSseMessage, postSse } from "../api/sse";
 import { useChatStore, type ThreadMessage, type ThreadPart } from "./store";
 
 export function handleSseEvent(name: string, data: unknown): void {
@@ -42,14 +43,9 @@ export async function runChat(text: string): Promise<void> {
       { text },
       {
         onMessage: (ev) => {
-          if (!ev.event) return;
-          let data: unknown = {};
-          try {
-            data = JSON.parse(ev.data);
-          } catch {
-            // tolerate non-JSON / keepalive
-          }
-          handleSseEvent(ev.event, data);
+          const decoded = decodeSseMessage(ev);
+          if (!decoded) return;
+          handleSseEvent(decoded.name, decoded.data);
         },
         onError: (err) => {
           s.errorAssistantTurn("NetworkError", err instanceof Error ? err.message : String(err));
@@ -109,10 +105,11 @@ function toAssistantUi(m: ThreadMessage): ThreadMessageLike {
 
 export function useChatRuntime() {
   const messages = useChatStore((s) => s.messages);
+  const convertMessage = useCallback((m: ThreadMessage) => toAssistantUi(m), []);
   return useExternalStoreRuntime({
     isRunning: messages.at(-1)?.status === "streaming",
     messages,
-    convertMessage: toAssistantUi,
+    convertMessage,
     onNew: async ({ content }) => {
       const text =
         content.find((c): c is { type: "text"; text: string } => c.type === "text")?.text ?? "";

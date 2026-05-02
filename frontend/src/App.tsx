@@ -15,10 +15,6 @@ import { BrewNowSheet } from "./brewnow/sheet";
 import { RatingToast } from "./rating/toast";
 import { ToastProvider } from "./components/toast";
 
-function TextPart() {
-  return <MessagePartPrimitive.Text />;
-}
-
 function ThreadMessage() {
   return (
     <MessagePrimitive.Root className="flex flex-col gap-1 px-4 py-2 text-sm">
@@ -29,7 +25,7 @@ function ThreadMessage() {
         <span className="opacity-60 text-xs">Brew</span>
       </MessagePrimitive.If>
       <div className="whitespace-pre-wrap leading-relaxed">
-        <MessagePrimitive.Parts components={{ Text: TextPart }} />
+        <MessagePrimitive.Parts components={{ Text: MessagePartPrimitive.Text }} />
       </div>
     </MessagePrimitive.Root>
   );

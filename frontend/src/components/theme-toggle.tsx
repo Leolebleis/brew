@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Button } from "./button";
 
 type Mode = "light" | "dark" | "system";
 
@@ -35,13 +36,13 @@ export function ThemeToggle() {
   const label = mode === "light" ? "☀" : mode === "dark" ? "☾" : "◐";
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
       onClick={next}
       aria-label={`Theme: ${mode}`}
-      className="px-2 py-1 text-sm rounded border border-[color:var(--color-border)]"
+      className="px-2 py-1 text-sm"
     >
       {label}
-    </button>
+    </Button>
   );
 }
