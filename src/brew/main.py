@@ -223,7 +223,9 @@ def _require_terminal_enabled() -> None:
 app.include_router(
     terminal_router,
     prefix="/api",
-    dependencies=[Depends(require_api_key), Depends(_require_terminal_enabled)],
+    # require_api_key is handled inline in the WS handler — FastAPI's WS dep
+    # resolver doesn't inject Header/Query the same way HTTP does.
+    dependencies=[Depends(_require_terminal_enabled)],
 )
 
 if _mcp_enabled:
