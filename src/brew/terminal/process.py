@@ -44,6 +44,10 @@ class TmuxPtyProcess:
     async def start(self) -> None:
         pid, fd = pty.fork()
         if pid == 0:
+            # tmux refuses to attach with TERM=dumb / unset ("open terminal
+            # failed: terminal does not support clear"). xterm-256color is
+            # what xterm.js emulates and ships in ncurses-base.
+            os.environ["TERM"] = "xterm-256color"
             os.execvp(self._argv[0], self._argv)  # noqa: S606  PTY child exec
         self._pid = pid
         self._fd = fd
