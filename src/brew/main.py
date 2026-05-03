@@ -5,7 +5,7 @@ import pathlib
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager, suppress
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -208,25 +208,11 @@ app.include_router(events_router, prefix="/api", dependencies=[Depends(require_a
 # os.getenv (not Settings) because mount must happen at module level, before lifespan.
 # Settings requires fellow_email/password which aren't available at import time in tests.
 _mcp_enabled = os.getenv("FELLOW_MCP_ENABLED", "false").lower() == "true"
-_chat_enabled = os.getenv("FELLOW_CHAT_ENABLED", "false").lower() == "true"
 
-
-def _require_terminal_enabled() -> None:
-    """404 the terminal endpoint when chat/MCP isn't wired.
-
-    Read at request time so tests can monkeypatch the flags after import.
-    """
-    if not (_chat_enabled and _mcp_enabled):
-        raise HTTPException(status_code=404)
-
-
-app.include_router(
-    terminal_router,
-    prefix="/api",
-    # require_api_key is handled inline in the WS handler — FastAPI's WS dep
-    # resolver doesn't inject Header/Query the same way HTTP does.
-    dependencies=[Depends(_require_terminal_enabled)],
-)
+# NO `dependencies=[...]` here — FastAPI silently 403s WebSocket upgrades when
+# deps propagate through include_router (regardless of whether the dep raises).
+# Auth + the FELLOW_CHAT_ENABLED gate are enforced inline in the WS handler.
+app.include_router(terminal_router, prefix="/api")
 
 if _mcp_enabled:
     from fastmcp import FastMCP as _FastMCP
