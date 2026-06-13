@@ -122,7 +122,7 @@ class PalateQuery:
         total_sim = sum(sim for sim, _ in scored)
         tendency: dict[str, float] = {}
         for axis in _AXES:
-            weighted = [(sim, getattr(e, axis)) for sim, e in scored if getattr(e, axis) is not None]
+            weighted = [(sim, val) for sim, e in scored if (val := getattr(e, axis)) is not None]
             axis_total = sum(sim for sim, _ in weighted)
             if axis_total > 0:
                 tendency[axis] = round(sum(sim * val for sim, val in weighted) / axis_total, 2)

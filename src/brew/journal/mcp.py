@@ -1,4 +1,3 @@
-import json
 from typing import Any
 
 from fastmcp import FastMCP
@@ -165,11 +164,4 @@ def register_journal_mcp(mcp: FastMCP, service: JournalService, bag_service: Bag
             )
         except DomainError as e:
             raise domain_error_to_tool_error(e) from e
-        return json.dumps(
-            {
-                "tendency": tendency.tendency,
-                "confidence": tendency.confidence,
-                "n": tendency.n,
-                "neighbours": tendency.neighbours,
-            }
-        )
+        return jsonify(tendency)

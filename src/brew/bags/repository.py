@@ -62,43 +62,27 @@ def _row_to_bag(row: aiosqlite.Row) -> Bag:
 
 
 def _build_update_clauses(update: BagUpdate) -> tuple[list[str], list[object]]:
+    # column -> value; None values are skipped. Keeps one flat builder (no per-group
+    # helper) while staying under the complexity cap.
+    columns: list[tuple[str, object | None]] = [
+        ("name", update.name),
+        ("origin", update.origin),
+        ("roaster", update.roaster),
+        ("roast_date", update.roast_date.isoformat() if update.roast_date else None),
+        ("roast_level", update.roast_level),
+        ("profile_id", update.profile_id),
+        ("profile_snapshot", json.dumps(update.profile_snapshot) if update.profile_snapshot is not None else None),
+        ("varietal", update.varietal),
+        ("process", update.process),
+        ("altitude_masl", update.altitude_masl),
+    ]
     sets: list[str] = []
     params: list[object] = []
-    if update.name is not None:
-        sets.append("name = ?")
-        params.append(update.name)
-    if update.origin is not None:
-        sets.append("origin = ?")
-        params.append(update.origin)
-    if update.roaster is not None:
-        sets.append("roaster = ?")
-        params.append(update.roaster)
-    if update.roast_date is not None:
-        sets.append("roast_date = ?")
-        params.append(update.roast_date.isoformat())
-    if update.roast_level is not None:
-        sets.append("roast_level = ?")
-        params.append(update.roast_level)
-    if update.profile_id is not None:
-        sets.append("profile_id = ?")
-        params.append(update.profile_id)
-    if update.profile_snapshot is not None:
-        sets.append("profile_snapshot = ?")
-        params.append(json.dumps(update.profile_snapshot))
-    _append_dimension_clauses(update, sets, params)
+    for column, value in columns:
+        if value is not None:
+            sets.append(f"{column} = ?")
+            params.append(value)
     return sets, params
-
-
-def _append_dimension_clauses(update: BagUpdate, sets: list[str], params: list[object]) -> None:
-    if update.varietal is not None:
-        sets.append("varietal = ?")
-        params.append(update.varietal)
-    if update.process is not None:
-        sets.append("process = ?")
-        params.append(update.process)
-    if update.altitude_masl is not None:
-        sets.append("altitude_masl = ?")
-        params.append(update.altitude_masl)
 
 
 class BagSqliteRepository:
