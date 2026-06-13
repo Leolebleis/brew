@@ -13,6 +13,9 @@ class BagCreateAPIRequest(BaseModel):
     profile_snapshot: dict[str, Any]
     roast_date: date | None = None
     profile_id: str | None = None
+    varietal: str | None = None
+    process: str | None = None
+    altitude_masl: int | None = Field(default=None, ge=0)
 
 
 class BagUpdateAPIRequest(BaseModel):
@@ -23,3 +26,6 @@ class BagUpdateAPIRequest(BaseModel):
     roast_level: str | None = Field(default=None, min_length=1)
     profile_id: str | None = None
     profile_snapshot: dict[str, Any] | None = None
+    varietal: str | None = None
+    process: str | None = None
+    altitude_masl: int | None = Field(default=None, ge=0)

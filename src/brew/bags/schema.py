@@ -26,7 +26,10 @@ BAGS_SCHEMA: list[str] = [
         opened_at TEXT NOT NULL,
         finished_at TEXT,
         profile_id TEXT,
-        profile_snapshot TEXT NOT NULL
+        profile_snapshot TEXT NOT NULL,
+        varietal TEXT,
+        process TEXT,
+        altitude_masl INTEGER
     )
     """,
 ]

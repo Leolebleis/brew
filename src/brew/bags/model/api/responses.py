@@ -18,3 +18,6 @@ class BagAPIResponse(BaseModel):
     finished_at: datetime | None
     profile_id: str | None
     profile_snapshot: dict[str, Any]
+    varietal: str | None
+    process: str | None
+    altitude_masl: int | None

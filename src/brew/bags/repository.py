@@ -55,7 +55,50 @@ def _row_to_bag(row: aiosqlite.Row) -> Bag:
         finished_at=_parse_datetime(row["finished_at"]) if row["finished_at"] else None,
         profile_id=row["profile_id"],
         profile_snapshot=json.loads(row["profile_snapshot"]),
+        varietal=row["varietal"],
+        process=row["process"],
+        altitude_masl=row["altitude_masl"],
     )
+
+
+def _build_update_clauses(update: BagUpdate) -> tuple[list[str], list[object]]:
+    sets: list[str] = []
+    params: list[object] = []
+    if update.name is not None:
+        sets.append("name = ?")
+        params.append(update.name)
+    if update.origin is not None:
+        sets.append("origin = ?")
+        params.append(update.origin)
+    if update.roaster is not None:
+        sets.append("roaster = ?")
+        params.append(update.roaster)
+    if update.roast_date is not None:
+        sets.append("roast_date = ?")
+        params.append(update.roast_date.isoformat())
+    if update.roast_level is not None:
+        sets.append("roast_level = ?")
+        params.append(update.roast_level)
+    if update.profile_id is not None:
+        sets.append("profile_id = ?")
+        params.append(update.profile_id)
+    if update.profile_snapshot is not None:
+        sets.append("profile_snapshot = ?")
+        params.append(json.dumps(update.profile_snapshot))
+    _append_dimension_clauses(update, sets, params)
+    return sets, params
+
+
+def _append_dimension_clauses(update: BagUpdate, sets: list[str], params: list[object]) -> None:
+    if update.varietal is not None:
+        sets.append("varietal = ?")
+        params.append(update.varietal)
+    if update.process is not None:
+        sets.append("process = ?")
+        params.append(update.process)
+    if update.altitude_masl is not None:
+        sets.append("altitude_masl = ?")
+        params.append(update.altitude_masl)
 
 
 class BagSqliteRepository:
@@ -70,8 +113,9 @@ class BagSqliteRepository:
             INSERT INTO bags (
                 id, name, origin, roaster, roast_date, roast_level,
                 initial_grams, remaining_grams, is_active, opened_at,
-                finished_at, profile_id, profile_snapshot
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, ?)
+                finished_at, profile_id, profile_snapshot,
+                varietal, process, altitude_masl
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, NULL, ?, ?, ?, ?, ?)
             """,
             (
                 bag_id,
@@ -85,6 +129,9 @@ class BagSqliteRepository:
                 opened_at,
                 create.profile_id,
                 json.dumps(create.profile_snapshot),
+                create.varietal,
+                create.process,
+                create.altitude_masl,
             ),
         )
         await self._conn.commit()
@@ -142,29 +189,7 @@ class BagSqliteRepository:
         return [_row_to_bag(row) for row in rows]
 
     async def update(self, bag_id: str, update: BagUpdate) -> bool:
-        sets: list[str] = []
-        params: list[object] = []
-        if update.name is not None:
-            sets.append("name = ?")
-            params.append(update.name)
-        if update.origin is not None:
-            sets.append("origin = ?")
-            params.append(update.origin)
-        if update.roaster is not None:
-            sets.append("roaster = ?")
-            params.append(update.roaster)
-        if update.roast_date is not None:
-            sets.append("roast_date = ?")
-            params.append(update.roast_date.isoformat())
-        if update.roast_level is not None:
-            sets.append("roast_level = ?")
-            params.append(update.roast_level)
-        if update.profile_id is not None:
-            sets.append("profile_id = ?")
-            params.append(update.profile_id)
-        if update.profile_snapshot is not None:
-            sets.append("profile_snapshot = ?")
-            params.append(json.dumps(update.profile_snapshot))
+        sets, params = _build_update_clauses(update)
 
         if not sets:
             return await self.get(bag_id) is not None

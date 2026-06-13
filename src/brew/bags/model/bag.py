@@ -24,6 +24,9 @@ class Bag:
     finished_at: datetime | None
     profile_id: str | None
     profile_snapshot: dict[str, Any]
+    varietal: str | None = None
+    process: str | None = None
+    altitude_masl: int | None = None
 
 
 @dataclass(frozen=True)
@@ -36,6 +39,9 @@ class BagCreate:
     profile_snapshot: dict[str, Any]
     roast_date: date | None = None
     profile_id: str | None = None
+    varietal: str | None = None
+    process: str | None = None
+    altitude_masl: int | None = None
 
 
 @dataclass(frozen=True)
@@ -47,3 +53,6 @@ class BagUpdate:
     roast_level: str | None = None
     profile_id: str | None = None
     profile_snapshot: dict[str, Any] | None = None
+    varietal: str | None = None
+    process: str | None = None
+    altitude_masl: int | None = None
