@@ -17,7 +17,7 @@ def mock_service() -> AsyncMock:
 @pytest.fixture
 def mcp(mock_service: AsyncMock) -> FastMCP:
     server = FastMCP("test")
-    register_journal_mcp(server, mock_service)
+    register_journal_mcp(server, mock_service, AsyncMock(), AsyncMock())
     return server
 
 
