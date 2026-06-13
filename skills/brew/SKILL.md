@@ -78,6 +78,15 @@ Fetch the template at invocation time via `coffee://profiles` — don't hardcode
 
 Pulse arrays from the template stay the same length (keeps the flat vs descending idiom intact).
 
+### Delicate light naturals & Geishas
+
+These over-extract and shed florals easily, and our drop-clone defaults leaned the wrong way for them (descending pulses, reflexive 3× bloom, generic "light" grind). For a Geisha or fruity light natural, override the template toward:
+
+- **Flat pulses + hot bloom** — bloom ~96 °C, then **flat pulses ~93.5–94 °C**, not a descending ramp. Fellow's best per-coffee natural Drops are flat (e.g. Proud Mary Ethiopia Adado Natural: 96 °C bloom → flat 93.5 °C pulses); descending ramps exist to tame a *darker/soluble* coffee's bitter tail, which a dense light roast doesn't have. Only descend deliberately (hot-bloom→cool-finish, à la competition Geisha recipes) if a brewed cup turns astringent.
+- **Ratio 16.0–16.5** — clarity-forward; the extra dilution opens the florals.
+- **Bloom 2–2.5×** — Fellow's default is **2×**; reserve 3× for very fresh, heavily-degassing light roasts (above ~3× actually lowers extraction). Don't reach for 3× by reflex.
+- **Grind finer** — see the Geisha note under *Ode Gen 2 grind* (~4 SS, not 5).
+
 ## Ode Gen 2 grind
 
 Scale 1.0–11.2 (sub-steps .0/.1/.2), lower = finer. Numbers calibrated for Gen 2 burrs.
@@ -87,11 +96,21 @@ Scale 1.0–11.2 (sub-steps .0/.1/.2), lower = finer. Numbers calibrated for Gen
 | Single-serve | 5 | 6 | 7 |
 | Batch | 7 | 7 | 8 |
 
-If the user has Fellow Drop guidance for the *exact* bean (often shows a range like "5.1–6.1"), prefer that range's midpoint over this table.
+**Delicate light naturals / Geishas grind FINER than the generic "light" column.** Fellow's own natural-Geisha Aiden recipe calls **Ode Gen 2 = 3.1–4.2 single-serve, 6–9 batch** ([source](https://fellowproducts.com/blogs/brew-talks/fellows-take-on-anthem-natural-geisha-brew-recipe)). Use **~4 SS / ~7–8 batch** for a Geisha or delicate fruity natural — the extra surface area develops the florals without under-extracting a dense light roast.
+
+If the user has Fellow Drop / first-party guidance for the *exact* bean (a range like "5.1–6.1", or Fellow's per-coffee Gen 2 call), prefer it over this table.
 
 Tasting feedback: sour/thin → 1 step finer. Bitter/dry → 1 step coarser.
 
-Surface a single integer + one-word descriptor in the brew plan. **Do NOT translate from Gen 1 — these are Gen 2 numbers.**
+Surface a single number + one-word descriptor in the brew plan (decimals are fine, e.g. `4` or `3.5`). **Do NOT translate from Gen 1 — these are Gen 2 numbers.** Prefer these absolute Gen 2 numbers or Fellow's first-party per-coffee calls. If you ever must convert a Gen 1 figure, Gen 2 grinds *finer* at the same dial, so go **~1–2 numbers coarser**.
+
+## Water (BWT magnesium-forward filter)
+
+Leo's brew water is BWT magnesium-mineralised — calcium stripped, magnesium added, soft, near-neutral pH. What that means for a recipe:
+
+- Magnesium-forward water **amplifies perceived sweetness, fruit and floral** — it flatters fruity light naturals / Geishas.
+- The "magnesium over-extracts" claim is **marketing, not science** — peer-reviewed data shows divalent cations are flavour *modifiers*, not extraction boosters. **Do NOT grind coarser to compensate for the water.**
+- The real risk is **low alkalinity → sharp / sour** ("bright front, empty middle"), because the softening strips buffer. If a cup reads sharp or thin, fix it with a **weaker ratio (~1:17)** or by **adding buffer to the water** (toward GH 50–70 / KH ~40 ppm) — never by changing grind.
 
 ## Pre-brew checklist sources
 
@@ -203,7 +222,9 @@ These are planned for v2 in a `journal` bounded context inside `brew/src/brew/jo
 - Inventing pulse temps / ratios from nothing → **stop**, clone a Fellow drop via `coffee://profiles` first.
 - About to ask the user for bean origin/roast without first checking `coffee://profiles` for an existing match → **stop**, check first.
 - About to translate Gen 1 grind numbers to Gen 2 → **stop**, the table is already Gen 2.
-- About to recommend a grind below 4 on a light single-serve → **stop**, real-world consensus is 4–6 for light SS.
+- Using the generic "light" grind (5 SS) for a Geisha / delicate natural → **stop**, those grind finer — Fellow's own call is 3.1–4.2 SS (use ~4).
+- About to give a light natural / Geisha a descending pulse ramp → **stop**, flat pulses (~94 °C) suit them; descending is for darker, more-soluble coffees.
+- Grinding coarser "because the water is magnesium-forward" → **stop**, that's unfounded; magnesium doesn't over-extract. Sharpness is an alkalinity/ratio issue.
 - User said "brew now" and you've not yet called `mcp__brew__brew_now` → **stop**, just call it.
 - Computing `time_seconds` yourself for a "brew now" request → **stop**, that's `brew_now`'s job.
 - Naming a new profile without the grind number as its first token → **stop**, lead with the grind (e.g. `"6 OJ Brazil"`).
