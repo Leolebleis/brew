@@ -16,3 +16,10 @@ class JournalEntryAPIResponse(BaseModel):
     rating: int | None
     note_text: str | None
     created_at: datetime
+    acidity: int | None
+    bitterness: int | None
+    body: int | None
+    sweetness: int | None
+    strength: int | None
+    flavor_tags: list[str]
+    bean_dimensions_snapshot: dict[str, Any] | None

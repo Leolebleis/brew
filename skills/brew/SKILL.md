@@ -25,17 +25,34 @@ settings, and the device shows the dose once you pick millilitres).
 
 ## Flow
 
-1. **Identify** the bean (photo/text).
+1. **Identify** the bean (photo/text), incl. dimensions: varietal, process, roast, origin.
 2. **Check `coffee://profiles`** for an existing match — roaster + coffee-name
    substring (e.g. "Intermission" + "Spring Bloom"). User profiles live in the
    `Custom` folder. If one matches, **reuse it** and say so; skip the rest. Only
    create fresh if there's no match or the user asks for a new one.
 3. **Clone a template drop** from `coffee://profiles` via the decision tree in
    `references/profile-heuristics.md`.
-4. **Apply nudges**: light-natural/Geisha overrides (below) + roast-delta.
-5. **Derive the two grind numbers** — single-serve and batch (below).
-6. **`create_profile`** with `profile_type=0`, °C temps, and the grind-span title.
-7. **Print the recipe card.** Stop.
+4. **Palate pre-flight** — call `query_palate(varietal, process, roast_level, origin,
+   altitude_masl)` for the user's tasting history of *similar* beans (see below).
+5. **Apply nudges**: light-natural/Geisha overrides (below) + roast-delta, **plus the
+   palate correction** from step 4 if its confidence is meaningful.
+6. **Derive the two grind numbers** — single-serve and batch (below).
+7. **`create_profile`** with `profile_type=0`, °C temps, and the grind-span title.
+8. **Print the recipe card.** Stop.
+
+### Palate pre-flight (step 4)
+
+`query_palate` returns `{tendency, confidence, n, neighbours}` — `tendency` is the
+similarity-weighted mean of the signed tasting axes (−2…+2) across the user's similar
+past brews. If `n ≥ 2` and confidence is meaningful, translate the tendency into a
+template nudge via the fault→lever mapping and **say why**:
+
+> *"Your last 3 Geisha naturals averaged sour (+1.5 acidity) — starting one grind finer
+> and ratio 16.0 instead of the template's 16.5."*
+
+Lever directions: **acidity +** (trends sour) → grind finer / ratio tighter; **bitterness +**
+(trends bitter) → grind coarser; **strength +/−** → ratio looser/tighter. If `n = 0` or
+confidence is low, proceed from the template **silently** — never invent history.
 
 ## Non-negotiable MCP values
 
@@ -206,6 +223,8 @@ This skill creates the profile and stops. Handled elsewhere:
   `brew_now`** as part of `/brew` → **stop**, all out of scope; this skill ends at the
   recipe card.
 - Skipping the `coffee://profiles` dedup check → **stop**, reuse before creating.
+- About to finalize a profile without calling `query_palate` for a bean whose dimensions
+  you know → **stop**, check palate history first and pre-correct (step 4).
 - Inventing pulse temps / ratios from nothing → **stop**, clone a Fellow drop first.
 - Using the table's "light" grind (5 SS) for a Geisha / delicate natural → **stop**,
   those grind finer — Fellow's own call is ~4 SS.

@@ -6,6 +6,7 @@ from httpx import AsyncClient
 
 from brew.errors import NotFoundError
 from brew.journal.dependencies import get_journal_service
+from brew.journal.model.entry import TastingAxes
 from brew.main import app
 from tests.journal.conftest import make_entry
 
@@ -62,21 +63,33 @@ async def test_get_returns_404_when_missing(client: AsyncClient, mock_service: A
 
 
 async def test_patch_rating_returns_200(client: AsyncClient, mock_service: AsyncMock) -> None:
-    mock_service.update.return_value = None
+    mock_service.record_tasting.return_value = None
 
     response = await client.patch("/api/journal/e1", json={"rating": 4})
 
     assert response.status_code == 200
-    mock_service.update.assert_awaited_once_with("e1", rating=4, note_text=None)
+    mock_service.record_tasting.assert_awaited_once_with(
+        "e1",
+        axes=TastingAxes(),
+        flavor_tags=None,
+        note_text=None,
+        rating=4,
+    )
 
 
 async def test_patch_note_returns_200(client: AsyncClient, mock_service: AsyncMock) -> None:
-    mock_service.update.return_value = None
+    mock_service.record_tasting.return_value = None
 
     response = await client.patch("/api/journal/e1", json={"note_text": "Caramel"})
 
     assert response.status_code == 200
-    mock_service.update.assert_awaited_once_with("e1", rating=None, note_text="Caramel")
+    mock_service.record_tasting.assert_awaited_once_with(
+        "e1",
+        axes=TastingAxes(),
+        flavor_tags=None,
+        note_text="Caramel",
+        rating=None,
+    )
 
 
 async def test_patch_rating_out_of_range_returns_422(client: AsyncClient) -> None:
@@ -86,7 +99,7 @@ async def test_patch_rating_out_of_range_returns_422(client: AsyncClient) -> Non
 
 
 async def test_patch_returns_404_when_missing(client: AsyncClient, mock_service: AsyncMock) -> None:
-    mock_service.update.side_effect = NotFoundError(
+    mock_service.record_tasting.side_effect = NotFoundError(
         message="not found", resource_kind="journal_entry", resource_id="e1"
     )
 

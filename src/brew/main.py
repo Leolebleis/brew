@@ -28,7 +28,7 @@ from brew.bags.repository import BagSqliteRepository
 from brew.bags.router import router as bags_router
 from brew.bags.schema import BAGS_SCHEMA
 from brew.bags.service import BagService
-from brew.db import init_db, open_db
+from brew.db import add_missing_columns, init_db, open_db
 from brew.dependencies import get_settings, require_api_key
 from brew.events.broadcaster import EventBroadcaster
 from brew.events.bus import EventBus
@@ -47,7 +47,8 @@ from brew.events.subscribers.journal_auto_log import make_journal_auto_log_handl
 from brew.events.subscribers.water_decrement import make_water_decrement_handler
 from brew.exception_handlers import register_exception_handlers
 from brew.health.router import router as health_router
-from brew.journal.dependencies import get_journal_service
+from brew.journal.dependencies import get_journal_service, get_palate_query
+from brew.journal.palate import PalateQuery
 from brew.journal.repository import JournalSqliteRepository
 from brew.journal.router import router as journal_router
 from brew.journal.schema import JOURNAL_SCHEMA
@@ -105,6 +106,7 @@ def _register_domain_mcp(
     water_service: WaterService,
     bag_service: BagService,
     journal_service: JournalService,
+    palate_query: PalateQuery,
 ) -> None:
     from brew.bags.mcp import register_bags_mcp  # noqa: PLC0415
     from brew.journal.mcp import register_journal_mcp  # noqa: PLC0415
@@ -112,7 +114,7 @@ def _register_domain_mcp(
 
     register_water_mcp(_mcp_server, water_service)
     register_bags_mcp(_mcp_server, bag_service)
-    register_journal_mcp(_mcp_server, journal_service)
+    register_journal_mcp(_mcp_server, journal_service, bag_service, palate_query)
 
 
 @asynccontextmanager
@@ -136,12 +138,40 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
     db_conn = await open_db(settings.database_path)
     await init_db(db_conn, [WATER_SCHEMA, BAGS_SCHEMA, JOURNAL_SCHEMA])
+    await add_missing_columns(
+        db_conn,
+        "bags",
+        {
+            "varietal": "TEXT",
+            "process": "TEXT",
+            "altitude_masl": "INTEGER",
+        },
+    )
+    # Migrated DBs get bare INTEGER axis columns (SQLite can't ADD COLUMN with a CHECK
+    # that references the table); the -2..+2 range is enforced by the API request models
+    # (Field ge=-2, le=2) and TastingAxes, not the migrated DB. Fresh installs keep the
+    # CHECK from JOURNAL_SCHEMA.
+    await add_missing_columns(
+        db_conn,
+        "journal_entries",
+        {
+            "acidity": "INTEGER",
+            "bitterness": "INTEGER",
+            "body": "INTEGER",
+            "sweetness": "INTEGER",
+            "strength": "INTEGER",
+            "flavor_tags": "TEXT NOT NULL DEFAULT '[]'",
+            "bean_dimensions_snapshot": "TEXT",
+        },
+    )
 
     bus = EventBus()
     broadcaster = EventBroadcaster()
     water_service = WaterService(repo=WaterSqliteRepository(conn=db_conn), bus=bus)
     bag_service = BagService(repo=BagSqliteRepository(conn=db_conn), bus=bus)
-    journal_service = JournalService(repo=JournalSqliteRepository(conn=db_conn), bus=bus)
+    journal_repo = JournalSqliteRepository(conn=db_conn)
+    journal_service = JournalService(repo=journal_repo, bus=bus)
+    palate_query = PalateQuery(journal_repo)
     _wire_event_subscribers(bus, broadcaster, journal_service, bag_service, water_service)
 
     poller_interval = float(os.getenv("FELLOW_POLLER_INTERVAL_SECONDS", "5.0"))
@@ -157,13 +187,14 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
             get_water_service: lambda: water_service,
             get_bag_service: lambda: bag_service,
             get_journal_service: lambda: journal_service,
+            get_palate_query: lambda: palate_query,
             get_event_broadcaster: lambda: broadcaster,
         }
     )
 
     if _mcp_enabled:
         _register_aiden_mcp(device_service, profile_service, schedule_service, brew_now_service)
-        _register_domain_mcp(water_service, bag_service, journal_service)
+        _register_domain_mcp(water_service, bag_service, journal_service, palate_query)
 
     try:
         yield

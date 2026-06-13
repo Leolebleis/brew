@@ -22,7 +22,14 @@ JOURNAL_SCHEMA: list[str] = [
         dose_grams INTEGER NOT NULL,
         rating INTEGER CHECK (rating IS NULL OR rating BETWEEN 1 AND 5),
         note_text TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        acidity INTEGER CHECK (acidity IS NULL OR acidity BETWEEN -2 AND 2),
+        bitterness INTEGER CHECK (bitterness IS NULL OR bitterness BETWEEN -2 AND 2),
+        body INTEGER CHECK (body IS NULL OR body BETWEEN -2 AND 2),
+        sweetness INTEGER CHECK (sweetness IS NULL OR sweetness BETWEEN -2 AND 2),
+        strength INTEGER CHECK (strength IS NULL OR strength BETWEEN -2 AND 2),
+        flavor_tags TEXT NOT NULL DEFAULT '[]',
+        bean_dimensions_snapshot TEXT
     )
     """,
     "CREATE INDEX IF NOT EXISTS idx_journal_brew_ended_at ON journal_entries(brew_ended_at DESC)",

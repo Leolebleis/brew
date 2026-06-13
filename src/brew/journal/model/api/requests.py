@@ -6,6 +6,12 @@ from pydantic import BaseModel, Field
 class JournalEntryUpdateAPIRequest(BaseModel):
     rating: int | None = Field(default=None, ge=1, le=5)
     note_text: str | None = None
+    acidity: int | None = Field(default=None, ge=-2, le=2)
+    bitterness: int | None = Field(default=None, ge=-2, le=2)
+    body: int | None = Field(default=None, ge=-2, le=2)
+    sweetness: int | None = Field(default=None, ge=-2, le=2)
+    strength: int | None = Field(default=None, ge=-2, le=2)
+    flavor_tags: list[str] | None = None
 
 
 class JournalEntryCreateAPIRequest(BaseModel):

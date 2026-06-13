@@ -1,14 +1,19 @@
 """Journal repository — Protocol + aiosqlite implementation."""
 
+from __future__ import annotations
+
 import json
 import uuid
 from datetime import datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
-import aiosqlite
+if TYPE_CHECKING:
+    import builtins
+
+    import aiosqlite
 
 from brew.datetime_utils import now_iso, to_iso
-from brew.journal.model.entry import JournalEntry, JournalEntryCreate
+from brew.journal.model.entry import JournalEntry, JournalEntryCreate, TastingAxes
 
 
 class JournalRepository(Protocol):
@@ -22,9 +27,19 @@ class JournalRepository(Protocol):
         since: datetime | None = None,
         rating_min: int | None = None,
         limit: int = 100,
-    ) -> list[JournalEntry]: ...
+    ) -> builtins.list[JournalEntry]: ...
     async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> bool: ...
     async def delete(self, entry_id: str) -> bool: ...
+    async def record_tasting(  # noqa: PLR0913
+        self,
+        entry_id: str,
+        *,
+        axes: TastingAxes | None = None,
+        flavor_tags: builtins.list[str] | None = None,
+        note_text: str | None = None,
+        rating: int | None = None,
+        bean_dimensions_snapshot: dict | None = None,
+    ) -> bool: ...
 
 
 def _parse_datetime(value: str) -> datetime:
@@ -44,6 +59,15 @@ def _row_to_entry(row: aiosqlite.Row) -> JournalEntry:
         rating=row["rating"],
         note_text=row["note_text"],
         created_at=_parse_datetime(row["created_at"]),
+        acidity=row["acidity"],
+        bitterness=row["bitterness"],
+        body=row["body"],
+        sweetness=row["sweetness"],
+        strength=row["strength"],
+        flavor_tags=json.loads(row["flavor_tags"]),
+        bean_dimensions_snapshot=(
+            json.loads(row["bean_dimensions_snapshot"]) if row["bean_dimensions_snapshot"] else None
+        ),
     )
 
 
@@ -93,7 +117,7 @@ class JournalSqliteRepository:
         since: datetime | None = None,
         rating_min: int | None = None,
         limit: int = 100,
-    ) -> list[JournalEntry]:
+    ) -> builtins.list[JournalEntry]:
         clauses: list[str] = []
         params: list[object] = []
         if bag_id is not None:
@@ -128,6 +152,46 @@ class JournalSqliteRepository:
         if note_text is not None:
             sets.append("note_text = ?")
             params.append(note_text)
+
+        if not sets:
+            return await self.get(entry_id) is not None
+
+        sql = f"UPDATE journal_entries SET {', '.join(sets)} WHERE id = ?"  # noqa: S608
+        params.append(entry_id)
+        cursor = await self._conn.execute(sql, tuple(params))
+        await self._conn.commit()
+        return cursor.rowcount > 0
+
+    async def record_tasting(  # noqa: PLR0913
+        self,
+        entry_id: str,
+        *,
+        axes: TastingAxes | None = None,
+        flavor_tags: builtins.list[str] | None = None,
+        note_text: str | None = None,
+        rating: int | None = None,
+        bean_dimensions_snapshot: dict | None = None,
+    ) -> bool:
+        sets: list[str] = []
+        params: list[object] = []
+        if axes is not None:
+            for name in ("acidity", "bitterness", "body", "sweetness", "strength"):
+                value = getattr(axes, name)
+                if value is not None:
+                    sets.append(f"{name} = ?")
+                    params.append(value)
+        if flavor_tags is not None:
+            sets.append("flavor_tags = ?")
+            params.append(json.dumps(flavor_tags))
+        if note_text is not None:
+            sets.append("note_text = ?")
+            params.append(note_text)
+        if rating is not None:
+            sets.append("rating = ?")
+            params.append(rating)
+        if bean_dimensions_snapshot is not None:
+            sets.append("bean_dimensions_snapshot = ?")
+            params.append(json.dumps(bean_dimensions_snapshot))
 
         if not sets:
             return await self.get(entry_id) is not None
