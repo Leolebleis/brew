@@ -135,7 +135,7 @@ Pre-brew checklist
   ⚠️  Reservoir ≥ <vol+100> ml filled  (manual)
   ⚠️  Wet the paper filter       (manual — rinses paper + preheats basket)
 
-Profile: "<TITLE>" (id: <ID>) — synced to Fellow cloud.
+Profile: "<GRIND> <TITLE>" (id: <ID>) — synced to Fellow cloud. Title leads with the grind so you can read it off the device.
 Say `brew now` when ready.
 ```
 
@@ -165,13 +165,15 @@ Use `mcp__brew__create_schedule` only for **recurring** schedules (any `days[i]=
 
 ## Profile title rules
 
+**Lead with the grind number.** The first token of the title is the Ode grind setting for this brew, e.g. `"6 OJ Brazil"` or `"5.1 Square Mile Sitio da Torre"`. This lets the user read the grind straight off the device's profile list when grinding by hand (analog brews), without re-deriving it. Use the same grind integer (or Drop-range midpoint) surfaced in the brew plan.
+
 Fellow validates server-side:
 
 - Max **50 chars**.
-- Allowed charset: `A–Z a–z 0–9` and specials `!@#$%&*-+?/.,:)(` (and spaces).
+- Allowed charset: `A–Z a–z 0–9` and specials `!@#$%&*-+?/.,:)(` (and spaces) — the leading grind digit and a decimal `.` are both in-charset.
 - No `_`, no `[]`, no `{}`, no `"`, no `'`, no `~`.
 
-Truncate or sanitize before sending. Prefer `"<Roaster> <Origin>"` or `"<Roaster> <Coffee Name>"`.
+Truncate or sanitize before sending. Format: `"<Grind> <Roaster> <Origin>"` or `"<Grind> <Roaster> <Coffee Name>"`.
 
 ## Error handling
 
@@ -204,3 +206,4 @@ These are planned for v2 in a `journal` bounded context inside `brew/src/brew/jo
 - About to recommend a grind below 4 on a light single-serve → **stop**, real-world consensus is 4–6 for light SS.
 - User said "brew now" and you've not yet called `mcp__brew__brew_now` → **stop**, just call it.
 - Computing `time_seconds` yourself for a "brew now" request → **stop**, that's `brew_now`'s job.
+- Naming a new profile without the grind number as its first token → **stop**, lead with the grind (e.g. `"6 OJ Brazil"`).
