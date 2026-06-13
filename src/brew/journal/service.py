@@ -1,12 +1,19 @@
 """Journal service — orchestrates the journal repository."""
 
-from datetime import datetime
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import builtins
+    from datetime import datetime
+
+    from brew.events.bus import EventBus
+    from brew.journal.model.entry import JournalEntry, JournalEntryCreate, TastingAxes
+    from brew.journal.repository import JournalRepository
 
 from brew.errors import NotFoundError
-from brew.events.bus import EventBus
 from brew.events.domain import JournalEntryCreated
-from brew.journal.model.entry import JournalEntry, JournalEntryCreate
-from brew.journal.repository import JournalRepository
 
 _KIND = "journal_entry"
 
@@ -46,7 +53,7 @@ class JournalService:
         since: datetime | None = None,
         rating_min: int | None = None,
         limit: int = 100,
-    ) -> list[JournalEntry]:
+    ) -> builtins.list[JournalEntry]:
         return await self._repo.list(
             bag_id=bag_id,
             profile_id=profile_id,
@@ -57,6 +64,27 @@ class JournalService:
 
     async def update(self, entry_id: str, *, rating: int | None, note_text: str | None) -> None:
         if not await self._repo.update(entry_id, rating=rating, note_text=note_text):
+            raise NotFoundError.for_resource(_KIND, entry_id)
+
+    async def record_tasting(  # noqa: PLR0913
+        self,
+        entry_id: str,
+        *,
+        axes: TastingAxes | None = None,
+        flavor_tags: builtins.list[str] | None = None,
+        note_text: str | None = None,
+        rating: int | None = None,
+        bean_dimensions_snapshot: dict | None = None,
+    ) -> None:
+        ok = await self._repo.record_tasting(
+            entry_id,
+            axes=axes,
+            flavor_tags=flavor_tags,
+            note_text=note_text,
+            rating=rating,
+            bean_dimensions_snapshot=bean_dimensions_snapshot,
+        )
+        if not ok:
             raise NotFoundError.for_resource(_KIND, entry_id)
 
     async def delete(self, entry_id: str) -> None:

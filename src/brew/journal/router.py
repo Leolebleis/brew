@@ -13,7 +13,7 @@ from brew.journal.model.api.requests import (
     JournalEntryUpdateAPIRequest,
 )
 from brew.journal.model.api.responses import JournalEntryAPIResponse
-from brew.journal.model.entry import JournalEntryCreate
+from brew.journal.model.entry import JournalEntryCreate, TastingAxes
 from brew.journal.service import JournalService
 
 router = APIRouter(prefix="/journal", tags=["journal"])
@@ -86,7 +86,19 @@ async def update_entry(
     request: JournalEntryUpdateAPIRequest,
     service: Annotated[JournalService, Depends(get_journal_service)],
 ) -> dict[str, str]:
-    await service.update(entry_id, rating=request.rating, note_text=request.note_text)
+    await service.record_tasting(
+        entry_id,
+        axes=TastingAxes(
+            acidity=request.acidity,
+            bitterness=request.bitterness,
+            body=request.body,
+            sweetness=request.sweetness,
+            strength=request.strength,
+        ),
+        flavor_tags=request.flavor_tags,
+        note_text=request.note_text,
+        rating=request.rating,
+    )
     return {"status": "ok"}
 
 
