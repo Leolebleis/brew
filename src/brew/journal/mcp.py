@@ -48,11 +48,11 @@ async def _resolve_log_tasting(  # noqa: PLR0913
     bean_dimensions_snapshot: dict[str, Any] | None = None
     if bag is not None:
         bean_dimensions_snapshot = {
-            "varietal": getattr(bag, "varietal", None),
-            "process": getattr(bag, "process", None),
-            "roast_level": getattr(bag, "roast_level", None),
-            "origin": getattr(bag, "origin", None),
-            "altitude_masl": getattr(bag, "altitude_masl", None),
+            "varietal": bag.varietal,
+            "process": bag.process,
+            "roast_level": bag.roast_level,
+            "origin": bag.origin,
+            "altitude_masl": bag.altitude_masl,
         }
 
     await service.record_tasting(

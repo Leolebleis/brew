@@ -1,7 +1,6 @@
 from unittest.mock import AsyncMock
 
 from brew.journal.palate import BeanDimensions, PalateQuery, dimension_distance
-
 from tests.journal.conftest import make_entry
 
 

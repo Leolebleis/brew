@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import builtins
 
+    from brew.journal.model.entry import JournalEntry
     from brew.journal.repository import JournalRepository
 
 _AXES = ("acidity", "bitterness", "body", "sweetness", "strength")
@@ -106,7 +107,7 @@ class PalateQuery:
 
     async def tendency_for(self, query: BeanDimensions, *, limit: int = 500) -> PalateTendency:
         entries = await self._repo.list(rating_min=1, limit=limit)
-        scored: list[tuple[float, object]] = []
+        scored: list[tuple[float, JournalEntry]] = []
         for e in entries:
             if e.bean_dimensions_snapshot is None:
                 continue
@@ -129,10 +130,10 @@ class PalateQuery:
         confidence = round(min(1.0, total_sim / _FULL_CONFIDENCE_SIM), 2)
         neighbours = [
             {
-                "entry_id": e.id,  # ty: ignore[unresolved-attribute]
+                "entry_id": e.id,
                 "similarity": round(sim, 2),
                 "axes": {a: getattr(e, a) for a in _AXES},
-                "rating": e.rating,  # ty: ignore[unresolved-attribute]
+                "rating": e.rating,
             }
             for sim, e in sorted(scored, key=lambda x: x[0], reverse=True)
         ]

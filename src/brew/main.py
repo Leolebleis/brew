@@ -147,6 +147,10 @@ async def _app_lifespan(app: FastAPI) -> AsyncGenerator[None]:
             "altitude_masl": "INTEGER",
         },
     )
+    # Migrated DBs get bare INTEGER axis columns (SQLite can't ADD COLUMN with a CHECK
+    # that references the table); the -2..+2 range is enforced by the API request models
+    # (Field ge=-2, le=2) and TastingAxes, not the migrated DB. Fresh installs keep the
+    # CHECK from JOURNAL_SCHEMA.
     await add_missing_columns(
         db_conn,
         "journal_entries",
