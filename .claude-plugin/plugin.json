@@ -1,6 +1,6 @@
 {
   "name": "brew",
-  "version": "0.1.0",
+  "version": "0.3.2",
   "description": "Claude Code skill for brewing coffee on a Fellow Aiden via the brew MCP server — pairs with the MCP server in this repo.",
   "author": {
     "name": "Leo Le Bleis"
